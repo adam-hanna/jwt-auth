@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"log"
 	"time"
-	
+
 	jwt "github.com/adam-hanna/jwt-auth/src"
 )
 
@@ -180,9 +180,63 @@ restrictedRoute.NullifyTokenCookies(&w, r)
 http.Redirect(w, r, "/login", 302)
 ~~~
 
+### Token Id checker
+A function used to check a refresh token id against a list of revoked (or blacklisted) id's. Returns true if the token id has not been revoked. This function is run everytime an auth token is refreshed.
+~~~go
+type TokenIdChecker func(tokenId string) bool
+
+func defaultCheckTokenId(tokenId string) bool {
+	// return true if the token id is valid (has not been revoked). False for otherwise
+	return true
+}
+
+func (a *Auth) SetCheckTokenIdFunction(checker TokenIdChecker) {
+	a.checkTokenId = checker
+}
+~~~
+
+### Token Id revoker
+A function that adds a token id to a blacklist of revoked tokens.
+~~~go
+type TokenRevoker func(tokenId string) error
+
+func defaultTokenRevoker(tokenId string) error {
+	return nil
+}
+
+func (a *Auth) SetRevokeTokenFunction(revoker TokenRevoker) {
+	a.revokeRefreshToken = revoker
+}
+~~~
+
+### 500 error handling
+Set the response to a 500 error.
+~~~go
+func defaultErrorHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Internal Server Error", 500)
+}
+
+func (a *Auth) SetErrorHandler(handler http.Handler) {
+	a.errorHandler = handler
+}
+~~~
+
+### 401 unauthorized handling
+Set the response to a 401 unauthorized request
+~~~go
+func defaultUnauthorizedHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Unauthorized", 401)
+}
+
+func (a *Auth) SetUnauthorizedHandler(handler http.Handler) {
+	a.unauthorizedHandler = handler
+}
+~~~
+
+
 ## Integration with popular goLang web Frameworks (untested)
 
-The architecture of this package was inspired by [Secure](https://github.com/unrolled/secure), so I believe the integrations, below, should work...
+The architecture of this package was inspired by [Secure](https://github.com/unrolled/secure), so I believe the integrations, below, should work. But they are untested.
 
 ### [Echo](https://github.com/labstack/echo)
 ~~~ go
