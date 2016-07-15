@@ -11,6 +11,10 @@ import (
 
 var restrictedRoute jwt.Auth
 
+var myUnauthorizedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "I Pitty the fool who is Unauthorized", 401)
+})
+
 var restrictedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	csrfSecret := w.Header().Get("X-CSRF-Token")
 	claims, err := restrictedRoute.GrabTokenClaims(w, r)
@@ -74,6 +78,8 @@ func main() {
 		log.Println("Error initializing the JWT's!")
 		log.Fatal(authErr)
 	}
+	
+	restrictedRoute.SetUnauthorizedHandler(myUnauthorizedHandler)
 
 	http.HandleFunc("/", loginHandler)
 	http.Handle("/restricted", restrictedRoute.Handler(restrictedHandler))
