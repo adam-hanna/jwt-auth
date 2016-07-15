@@ -1,0 +1,79 @@
+<html>
+	<head>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.0.0/jquery.min.js"></script>
+	</head>
+
+	<body>
+		<div id="login">
+			<h1>Login</h1>
+			<form id="fakeLogin" name="fakeLogin" onsubmit="return DoSubmit();">
+				<input class="fullWidth" name="username" type="text" placeholder="username" />
+				<input class="fullWidth" name="password" type="password" placeholder="password" />
+
+				<input type="Submit" value="Login" />
+			</form>
+			<form style="display: none;" id="realLogin" name="realLogin" action="/login" method="POST">
+				<input class="fullWidth" name="username" type="text" placeholder="username" />
+				<input class="fullWidth" name="password" type="password" placeholder="password" />
+			</form>
+			<form id="restricted" name="restricted" action="/restricted" method="POST" style="display: none;">
+				<input id="X-CSRF-Token-input" name="X-CSRF-Token" />
+			</form>
+		</div>
+
+		<style>
+			html, body {
+				height: 100%;
+				width: 100%;
+				
+				margin: 0px;
+				padding: 0px;
+			}
+
+			#login {
+				text-align: center;
+
+				width: 75%;
+				max-width: 600px;
+
+				margin: 0 auto;
+			}
+
+			.fullWidth {
+				width: 100%;
+			}
+
+			input {
+				margin-top: 5px;
+			}
+
+			h1 {
+				margin-top: 25px;
+			}
+		</style>
+
+		<script>
+			function DoSubmit(){
+				document.realLogin.username.value = document.fakeLogin.username.value;
+				document.realLogin.password.value = document.fakeLogin.password.value;
+
+				$.ajax({
+					'type': 	'POST',
+					'url': 		'/',
+					'data': 	$('#realLogin').serializeArray(),
+					success: function(data, textStatus, request) {
+						var token = request.getResponseHeader('X-CSRF-Token');
+						console.log("Success! The token is: ", token);
+						$("#X-CSRF-Token-input").val(token);
+						$("#restricted").submit();
+					},
+					error: function (request, textStatus, errorThrown) {
+						console.log("Error!", request.getResponseHeader('X-CSRF-Token'));
+					}
+				});
+
+				return false;
+			}
+		</script>
+	</body>
+</html>
