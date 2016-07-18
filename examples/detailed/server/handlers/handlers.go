@@ -18,8 +18,9 @@ func InitHandlers() error {
 	newRouteError := jwt.New(&restrictedRoute, jwt.Options{
 		PrivateKeyLocation: 	"keys/app.rsa", 	// `$ openssl genrsa -out app.rsa 2048`
 		PublicKeyLocation: 		"keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
-		RefreshTokenValidTime: 	5 * time.Second,
-		AuthTokenValidTime: 	1 * time.Second,
+		RefreshTokenValidTime: 	72 * time.Hour,
+		AuthTokenValidTime: 	15 * time.Minute,
+		Debug: 					true,
 	})
 	if newRouteError != nil {
 		return newRouteError
