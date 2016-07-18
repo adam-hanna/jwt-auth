@@ -1,0 +1,16 @@
+{
+	"ImportPath": "github.com/adam-hanna/goLang-jwt-auth",
+	"GoVersion": "go1.6",
+	"GodepVersion": "v62",
+	"Deps": [
+		{
+			"ImportPath": "github.com/dgrijalva/jwt-go",
+			"Comment": "v3.0.0-2-gf077707",
+			"Rev": "f0777076321ab64f6efc15a82d9d23b98539b943"
+		},
+		{
+			"ImportPath": "github.com/justinas/alice",
+			"Rev": "29a850317649fc021f42f80ec29552f9a3156ee9"
+		}
+	]
+}

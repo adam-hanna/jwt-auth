@@ -1,0 +1,97 @@
+<html>
+	<head>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.0.0/jquery.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/components/core-min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/components/sha256-min.js"></script>
+	</head>
+
+	<body>
+		<div id="register">
+			<h1>Register</h1>
+			<form id="fakeRegister" name="fakeRegister" onsubmit="return DoSubmit();">
+				<input class="fullWidth" name="username" type="text" placeholder="username" />
+				<input class="fullWidth" name="password" type="password" placeholder="password" />
+
+				<input type="Submit" value="Register" />
+			</form>
+			<form id="realRegister" name="realRegister" action="/register" method="POST" style="display: none;">
+				<input class="fullWidth" name="username" type="text" placeholder="username" />
+				<input class="fullWidth" name="password" type="password" placeholder="password" />
+			</form>
+			<form id="restricted" name="restricted" action="/restricted" method="POST" style="display: none;">
+				<input id="X-CSRF-Token-input" name="X-CSRF-Token" />
+			</form>
+		</div>
+
+		<style>
+			html, body {
+				height: 100%;
+				width: 100%;
+				
+				margin: 0px;
+				padding: 0px;
+			}
+
+			#register {
+				text-align: center;
+
+				width: 75%;
+				max-width: 600px;
+
+				margin: 0 auto;
+			}
+
+			.fullWidth {
+				width: 100%;
+			}
+
+			input {
+				margin-top: 5px;
+			}
+
+			h1 {
+				margin-top: 25px;
+			}
+		</style>
+
+		<script>
+			if ( {{ .BAlertUser }} ) alert("{{ .AlertMsg }}");
+
+			function DoSubmit(){
+				document.realRegister.username.value = document.fakeRegister.username.value;
+				document.realRegister.password.value = CryptoJS.SHA256(document.fakeRegister.password.value).toString(CryptoJS.enc.Hex);
+
+				$.ajax({
+					'type': 	'POST',
+					'url': 		'/register',
+					'data': 	$('#realRegister').serializeArray(),
+					success: function(data, textStatus, request) {
+						var token = request.getResponseHeader('X-CSRF-Token');
+						console.log("Success! The token is: ", token);
+						$("#X-CSRF-Token-input").val(token);
+						$("#restricted").submit();
+
+						// $.ajax({
+						// 	'url': 		"/restricted",
+						// 	'headers': 	{ 'X-CSRF-Token' : token },             
+						// 	'type': 	"GET",
+						// 	success: function(data, textStatus, request) {
+						// 		console.log("Success the 2nd time!");
+						// 		console.log(data, textStatus, request)
+						// 	},
+						// 	error: function (request, textStatus, errorThrown) {
+						// 		console.log("Error the 2nd time!");
+						// 		console.log(request, textStatus, errorThrown)
+						// 	}
+						// });
+					},
+					error: function (request, textStatus, errorThrown) {
+						console.log("Error!", request.getResponseHeader('X-CSRF-Token'));
+					}
+				});
+
+				return false;
+			}
+		</script>
+	</body>
+</html>

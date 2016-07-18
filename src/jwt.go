@@ -88,9 +88,11 @@ func New(auth *Auth, options ...Options) (error) {
 	// check if durations have been provided for auth and refresh token exp
 	// if not, set them equal to the default
 	if o.RefreshTokenValidTime <= 0 {
+		// log.Println("Using default refreh token time")
 		o.RefreshTokenValidTime = defaultRefreshTokenValidTime
 	}
 	if o.AuthTokenValidTime <= 0 {
+		// log.Println("Using default auth token time")
 		o.AuthTokenValidTime = defaultAuthTokenValidTime
 	}
 
@@ -446,9 +448,11 @@ func (a *Auth) updateAuthTokenString(refreshTokenString string, oldAuthTokenStri
 
 	// check if the refresh token has been revoked
 	if a.checkTokenId(refreshTokenClaims.StandardClaims.Id) {
+		// log.Println("Refresh token has not been revoked")
 		// the refresh token has not been revoked
 		// has it expired?
 		if refreshToken.Valid {
+			// log.Println("Refresh token is not expired")
 			// nope, the refresh token has not expired
 			// issue a new auth token
 
