@@ -23,6 +23,7 @@ func main() {
 		PublicKeyLocation: 		"keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
 		RefreshTokenValidTime: 	72 * time.Hour,
 		AuthTokenValidTime: 	15 * time.Minute,
+		Debug: 					true,
 	})
 	if authErr != nil {
 		log.Println("Error initializing the JWT's!")

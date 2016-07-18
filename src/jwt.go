@@ -9,7 +9,7 @@ import (
 	"io/ioutil"
 	"time"
 	"errors"
-	// "log"
+	"log"
 	"github.com/adam-hanna/randomstrings"
 	jwt "github.com/dgrijalva/jwt-go"
 )
@@ -28,6 +28,7 @@ type Options struct {
 	PublicKeyLocation 		string
 	RefreshTokenValidTime 	time.Duration
 	AuthTokenValidTime 		time.Duration
+	Debug 					bool
 	TokenClaims 			ClaimsType
 }
 
@@ -41,7 +42,6 @@ func defaultTokenRevoker(tokenId string) error {
 type TokenRevoker func(tokenId string) error
 
 func defaultCheckTokenId(tokenId string) bool {
-	// log.Println("In default check token id")
 	// return true if the token id is valid (has not been revoked). False for otherwise
 	return true
 }
@@ -89,11 +89,9 @@ func New(auth *Auth, options ...Options) (error) {
 	// check if durations have been provided for auth and refresh token exp
 	// if not, set them equal to the default
 	if o.RefreshTokenValidTime <= 0 {
-		// log.Println("Using default refreh token time")
 		o.RefreshTokenValidTime = defaultRefreshTokenValidTime
 	}
 	if o.AuthTokenValidTime <= 0 {
-		// log.Println("Using default auth token time")
 		o.AuthTokenValidTime = defaultAuthTokenValidTime
 	}
 
@@ -175,12 +173,12 @@ func (a *Auth) Process(w http.ResponseWriter, r *http.Request) error {
 	// read cookies
 	AuthCookie, authErr := r.Cookie("AuthToken")
 	if authErr == http.ErrNoCookie {
-		// log.Println("Unauthorized attempt! No auth cookie")
+		a.myLog("Unauthorized attempt! No auth cookie")
 		a.NullifyTokenCookies(&w, r)
 		a.unauthorizedHandler.ServeHTTP(w, r)
 		return errors.New("Unauthorized")
 	} else if authErr != nil {
-		// log.Panic("panic: %+v", authErr)
+		a.myLog(authErr)
 		a.NullifyTokenCookies(&w, r)
 		a.errorHandler.ServeHTTP(w, r)
 		return errors.New("Internal Server Error")
@@ -188,12 +186,12 @@ func (a *Auth) Process(w http.ResponseWriter, r *http.Request) error {
 
 	RefreshCookie, refreshErr := r.Cookie("RefreshToken")
 	if refreshErr == http.ErrNoCookie {
-		// log.Println("Unauthorized attempt! No refresh cookie")
+		a.myLog("Unauthorized attempt! No refresh cookie")
 		a.NullifyTokenCookies(&w, r)
 		a.unauthorizedHandler.ServeHTTP(w, r)
 		return errors.New("Unauthorized")
 	} else if refreshErr != nil {
-		// log.Panic("panic: %+v", refreshErr)
+		a.myLog(refreshErr)
 		a.NullifyTokenCookies(&w, r)
 		a.errorHandler.ServeHTTP(w, r)
 		return errors.New("Internal Server Error")
@@ -206,7 +204,7 @@ func (a *Auth) Process(w http.ResponseWriter, r *http.Request) error {
 	authTokenString, refreshTokenString, csrfSecret, err := a.checkAndRefreshTokens(AuthCookie.Value, RefreshCookie.Value, requestCsrfToken)
 	if err != nil {
 		if err.Error() == "Unauthorized" {
-			// log.Println("Unauthorized attempt! JWT's not valid!")
+			a.myLog("Unauthorized attempt! JWT's not valid!")
 
 			a.unauthorizedHandler.ServeHTTP(w, r)
 			return errors.New("Unauthorized")
@@ -214,14 +212,14 @@ func (a *Auth) Process(w http.ResponseWriter, r *http.Request) error {
 			// @adam-hanna: do we 401 or 500, here?
 			// it could be 401 bc the token they provided was messed up
 			// or it could be 500 bc there was some error on our end
-			// log.Println("err not nil")
-			// log.Panic("panic: %+v", err)
+			a.myLog(err)
 			a.errorHandler.ServeHTTP(w, r)
 			return errors.New("Internal Server Error")
 		}
 	}
 
-	// log.Println("Successfully recreated jwts")
+	a.myLog("Successfully checked / refreshed jwts")
+
 	// if we've made it this far, everything is valid!
 	// And tokens have been refreshed if need-be
 	setAuthAndRefreshCookies(&w, authTokenString, refreshTokenString)
@@ -255,7 +253,7 @@ func (a *Auth) NullifyTokenCookies(w *http.ResponseWriter, r *http.Request) {
 		// do nothing, there is no refresh cookie present
 		return
 	} else if refreshErr != nil {
-		// log.Panic("panic: %+v", refreshErr)
+		a.myLog(refreshErr)
 		http.Error(*w, http.StatusText(500), 500)
 	} else {
 		a.revokeRefreshToken(RefreshCookie.Value)
@@ -321,7 +319,7 @@ func (a *Auth) IssueNewTokens(w http.ResponseWriter, claims ClaimsType) (err err
 func (a *Auth) checkAndRefreshTokens(oldAuthTokenString string, oldRefreshTokenString string, oldCsrfSecret string) (newAuthTokenString, newRefreshTokenString, newCsrfSecret string, err error) {
 	// first, check that a csrf token was provided
 	if oldCsrfSecret == "" {
-		// log.Println("No CSRF token!")
+		a.myLog("No CSRF token in request!")
 		err = errors.New("Unauthorized")
 		return
 	}
@@ -335,7 +333,7 @@ func (a *Auth) checkAndRefreshTokens(oldAuthTokenString string, oldRefreshTokenS
 		return
 	}
 	if oldCsrfSecret != authTokenClaims.Csrf {
-		// log.Println("CSRF token doesn't match jwt!")
+		a.myLog("CSRF token doesn't match jwt!")
 		err = errors.New("Unauthorized")
 		return
 	}
@@ -343,7 +341,7 @@ func (a *Auth) checkAndRefreshTokens(oldAuthTokenString string, oldRefreshTokenS
 
 	// next, check the auth token in a stateless manner
 	if authToken.Valid {
-		// log.Println("Auth token is valid")
+		a.myLog("Auth token is valid")
 		// auth token has not expired
 		// we need to return the csrf secret bc that's what the function calls for
 		newCsrfSecret = authTokenClaims.Csrf
@@ -355,9 +353,9 @@ func (a *Auth) checkAndRefreshTokens(oldAuthTokenString string, oldRefreshTokenS
 		newAuthTokenString = oldAuthTokenString
 		return
 	} else if ve, ok := err.(*jwt.ValidationError); ok {
-		// log.Println("Auth token is not valid")
+		a.myLog("Auth token is not valid")
 		if ve.Errors&(jwt.ValidationErrorExpired) != 0 {
-			// log.Println("Auth token is expired")
+			a.myLog("Auth token is expired")
 			// auth token is expired
 			// fyi - refresh token is checked in the update auth func
 			newAuthTokenString, newCsrfSecret, err = a.updateAuthTokenString(oldRefreshTokenString, oldAuthTokenString)
@@ -375,12 +373,12 @@ func (a *Auth) checkAndRefreshTokens(oldAuthTokenString string, oldRefreshTokenS
 			newRefreshTokenString, err = a.updateRefreshTokenCsrf(newRefreshTokenString, newCsrfSecret)
 			return
 		} else {
-			// log.Println("Error in auth token")
+			a.myLog("Error in auth token")
 			err = errors.New("Error in auth token")
 			return
 		}
 	} else {
-		// log.Println("Error in auth token")
+		a.myLog("Error in auth token")
 		err = errors.New("Error in auth token")
 		return
 	}
@@ -449,11 +447,11 @@ func (a *Auth) updateAuthTokenString(refreshTokenString string, oldAuthTokenStri
 
 	// check if the refresh token has been revoked
 	if a.checkTokenId(refreshTokenClaims.StandardClaims.Id) {
-		// log.Println("Refresh token has not been revoked")
+		a.myLog("Refresh token has not been revoked")
 		// the refresh token has not been revoked
 		// has it expired?
 		if refreshToken.Valid {
-			// log.Println("Refresh token is not expired")
+			a.myLog("Refresh token is not expired")
 			// nope, the refresh token has not expired
 			// issue a new auth token
 
@@ -469,7 +467,7 @@ func (a *Auth) updateAuthTokenString(refreshTokenString string, oldAuthTokenStri
 			// so we can simply return
 			return
 		} else {
-			// log.Println("Refresh token has expired!")
+			a.myLog("Refresh token has expired!")
 			// the refresh token has expired! Require the user to re-authenticate
 			// @adam-hanna: Do we want to revoke the token in our db?
 			// I don't think we need to because it has expired and we can simply check the 
@@ -479,7 +477,7 @@ func (a *Auth) updateAuthTokenString(refreshTokenString string, oldAuthTokenStri
 			return
 		}
 	} else {
-		// log.Println("Refresh token has been revoked!")
+		a.myLog("Refresh token has been revoked!")
 		// the refresh token has been revoked!
 		err = errors.New("Unauthorized")
 		return
@@ -509,12 +507,12 @@ func (a *Auth) GrabTokenClaims(w http.ResponseWriter, r *http.Request) (ClaimsTy
 	// read cookies
 	AuthCookie, authErr := r.Cookie("AuthToken")
 	if authErr == http.ErrNoCookie {
-		// log.Println("Unauthorized attempt! No auth cookie")
+		a.myLog("Unauthorized attempt! No auth cookie")
 		a.NullifyTokenCookies(&w, r)
 		a.unauthorizedHandler.ServeHTTP(w, r)
 		return ClaimsType{}, errors.New("Unauthorized")
 	} else if authErr != nil {
-		// log.Panic("panic: %+v", authErr)
+		a.myLog(authErr)
 		a.NullifyTokenCookies(&w, r)
 		a.errorHandler.ServeHTTP(w, r)
 		return ClaimsType{}, errors.New("Unauthorized")
@@ -529,4 +527,10 @@ func (a *Auth) GrabTokenClaims(w http.ResponseWriter, r *http.Request) (ClaimsTy
 	}
 
 	return *tokenClaims, nil
+}
+
+func (a *Auth) myLog(stoofs interface{}) {
+	if a.options.Debug {
+		log.Println(stoofs)
+	}
 }
