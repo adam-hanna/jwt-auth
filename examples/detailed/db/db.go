@@ -107,7 +107,7 @@ func DeleteRefreshToken(jti string) error {
 }
 
 func CheckRefreshToken(jti string) bool {
-	log.Println("Checking")
+	log.Println("In custom check token id")
 	return refreshTokens[jti] != ""
 }
 

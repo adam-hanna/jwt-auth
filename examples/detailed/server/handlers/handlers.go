@@ -15,11 +15,21 @@ import (
 var restrictedRoute jwt.Auth
 
 func InitHandlers() error {
+	newRouteError := jwt.New(&restrictedRoute, jwt.Options{
+		PrivateKeyLocation: 	"keys/app.rsa", 	// `$ openssl genrsa -out app.rsa 2048`
+		PublicKeyLocation: 		"keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
+		RefreshTokenValidTime: 	5 * time.Second,
+		AuthTokenValidTime: 	1 * time.Second,
+	})
+	if newRouteError != nil {
+		return newRouteError
+	}
+
+	restrictedRoute.SetUnauthorizedHandler(MyUnauthorizedHandler)
+	restrictedRoute.SetErrorHandler(myErrorHandler)
+	
 	restrictedRoute.SetRevokeTokenFunction(db.DeleteRefreshToken)
 	restrictedRoute.SetCheckTokenIdFunction(db.CheckRefreshToken)
-
-	restrictedRoute.SetUnauthorizedHandler(myUnauthorizedHandler)
-	restrictedRoute.SetErrorHandler(myErrorHandler)
 
 	http.Handle("/", alice.New(recoverHandler).ThenFunc(loginHandler))
 	http.Handle("/register", alice.New(recoverHandler).ThenFunc(registerHandler))
@@ -28,15 +38,10 @@ func InitHandlers() error {
 	http.Handle("/logout", alice.New(restrictedRoute.Handler, recoverHandler).ThenFunc(logoutHandler))
 	http.Handle("/deleteUser", alice.New(restrictedRoute.Handler, recoverHandler).ThenFunc(deleteUserHandler))
 
-	return jwt.New(&restrictedRoute, jwt.Options{
-		PrivateKeyLocation: 	"keys/app.rsa", // `$ openssl genrsa -out app.rsa 2048`
-		PublicKeyLocation: 		"keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
-		RefreshTokenValidTime: 	72 * time.Hour,
-		AuthTokenValidTime: 	15 * time.Minute,
-	})
+	return nil
 }
 
-var myUnauthorizedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+var MyUnauthorizedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "I pitty the fool who is unauthorized", 401)
 })
 

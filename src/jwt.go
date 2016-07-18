@@ -41,6 +41,7 @@ func defaultTokenRevoker(tokenId string) error {
 type TokenRevoker func(tokenId string) error
 
 func defaultCheckTokenId(tokenId string) bool {
+	// log.Println("In default check token id")
 	// return true if the token id is valid (has not been revoked). False for otherwise
 	return true
 }
