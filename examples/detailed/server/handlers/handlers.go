@@ -9,7 +9,7 @@ import (
 
 	"github.com/adam-hanna/jwt-auth/examples/detailed/server/templates"
 	"github.com/adam-hanna/jwt-auth/examples/detailed/db"
-	jwt "github.com/adam-hanna/jwt-auth/src"
+	"github.com/adam-hanna/jwt-auth/jwt"
 )
 
 var restrictedRoute jwt.Auth

@@ -11,13 +11,13 @@ import (
 	"errors"
 	"log"
 	"github.com/adam-hanna/randomstrings"
-	jwt "github.com/dgrijalva/jwt-go"
+	jwtGo "github.com/dgrijalva/jwt-go"
 )
 
 type ClaimsType struct {
 	// Standard claims are the standard jwt claims from the ietf standard
 	// https://tools.ietf.org/html/rfc7519
-	jwt.StandardClaims
+	jwtGo.StandardClaims
 	Csrf 				string
 	CustomClaims 		map[string]interface{}
 }
@@ -101,7 +101,7 @@ func New(auth *Auth, options ...Options) (error) {
 		return err
 	}
 
-	signKey, err := jwt.ParseRSAPrivateKeyFromPEM(signBytes)
+	signKey, err := jwtGo.ParseRSAPrivateKeyFromPEM(signBytes)
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func New(auth *Auth, options ...Options) (error) {
 		return err
 	}
 
-	verifyKey, err := jwt.ParseRSAPublicKeyFromPEM(verifyBytes)
+	verifyKey, err := jwtGo.ParseRSAPublicKeyFromPEM(verifyBytes)
 	if err != nil {
 		return err
 	}
@@ -325,7 +325,7 @@ func (a *Auth) checkAndRefreshTokens(oldAuthTokenString string, oldRefreshTokenS
 	}
 
 	// now, check that it matches what's in the auth token claims
-	authToken, err := jwt.ParseWithClaims(oldAuthTokenString, &ClaimsType{}, func(token *jwt.Token) (interface{}, error) {
+	authToken, err := jwtGo.ParseWithClaims(oldAuthTokenString, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
 		return a.verifyKey, nil
 	})
 	authTokenClaims, ok := authToken.Claims.(*ClaimsType)
@@ -352,9 +352,9 @@ func (a *Auth) checkAndRefreshTokens(oldAuthTokenString string, oldRefreshTokenS
 		newRefreshTokenString, err = a.updateRefreshTokenExp(oldRefreshTokenString)
 		newAuthTokenString = oldAuthTokenString
 		return
-	} else if ve, ok := err.(*jwt.ValidationError); ok {
+	} else if ve, ok := err.(*jwtGo.ValidationError); ok {
 		a.myLog("Auth token is not valid")
-		if ve.Errors&(jwt.ValidationErrorExpired) != 0 {
+		if ve.Errors&(jwtGo.ValidationErrorExpired) != 0 {
 			a.myLog("Auth token is expired")
 			// auth token is expired
 			// fyi - refresh token is checked in the update auth func
@@ -394,7 +394,7 @@ func (a *Auth) createRefreshTokenString(claims ClaimsType, csrfString string) (r
 	claims.Csrf = csrfString
 
 	// create a signer for rsa 256
-	refreshJwt := jwt.NewWithClaims(jwt.GetSigningMethod("RS256"), claims)
+	refreshJwt := jwtGo.NewWithClaims(jwtGo.GetSigningMethod("RS256"), claims)
 
 	// generate the refresh token string
 	refreshTokenString, err = refreshJwt.SignedString(a.signKey)
@@ -408,7 +408,7 @@ func (a *Auth) createAuthTokenString(claims ClaimsType, csrfSecret string) (auth
 	claims.Csrf = csrfSecret
 
 	// create a signer for rsa 256
-	authJwt := jwt.NewWithClaims(jwt.GetSigningMethod("RS256"), claims)
+	authJwt := jwtGo.NewWithClaims(jwtGo.GetSigningMethod("RS256"), claims)
 
 	// generate the auth token string
 	authTokenString, err = authJwt.SignedString(a.signKey)
@@ -416,7 +416,7 @@ func (a *Auth) createAuthTokenString(claims ClaimsType, csrfSecret string) (auth
 }
 
 func (a *Auth) updateRefreshTokenExp(oldRefreshTokenString string) (string, error) {
-	refreshToken, _ := jwt.ParseWithClaims(oldRefreshTokenString, &ClaimsType{}, func(token *jwt.Token) (interface{}, error) {
+	refreshToken, _ := jwtGo.ParseWithClaims(oldRefreshTokenString, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
         return a.verifyKey, nil
     })
 
@@ -429,14 +429,14 @@ func (a *Auth) updateRefreshTokenExp(oldRefreshTokenString string) (string, erro
 	oldRefreshTokenClaims.StandardClaims.ExpiresAt = refreshTokenExp
 
 	// create a signer for rsa 256
-	refreshJwt := jwt.NewWithClaims(jwt.GetSigningMethod("RS256"), oldRefreshTokenClaims)
+	refreshJwt := jwtGo.NewWithClaims(jwtGo.GetSigningMethod("RS256"), oldRefreshTokenClaims)
 
 	// generate the refresh token string
 	return refreshJwt.SignedString(a.signKey)
 }
 
 func (a *Auth) updateAuthTokenString(refreshTokenString string, oldAuthTokenString string) (newAuthTokenString, csrfSecret string, err error) {
-	refreshToken, err := jwt.ParseWithClaims(refreshTokenString, &ClaimsType{}, func(token *jwt.Token) (interface{}, error) {
+	refreshToken, err := jwtGo.ParseWithClaims(refreshTokenString, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
 		return a.verifyKey, nil
 	})
 	refreshTokenClaims, ok := refreshToken.Claims.(*ClaimsType)
@@ -485,7 +485,7 @@ func (a *Auth) updateAuthTokenString(refreshTokenString string, oldAuthTokenStri
 }
 
 func (a *Auth) updateRefreshTokenCsrf(oldRefreshTokenString string, newCsrfString string) (string, error) {
-	refreshToken, _ := jwt.ParseWithClaims(oldRefreshTokenString, &ClaimsType{}, func(token *jwt.Token) (interface{}, error) {
+	refreshToken, _ := jwtGo.ParseWithClaims(oldRefreshTokenString, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
         return a.verifyKey, nil
     })
 
@@ -497,7 +497,7 @@ func (a *Auth) updateRefreshTokenCsrf(oldRefreshTokenString string, newCsrfStrin
 	oldRefreshTokenClaims.Csrf = newCsrfString
 
 	// create a signer for rsa 256
-	refreshJwt := jwt.NewWithClaims(jwt.GetSigningMethod("RS256"), oldRefreshTokenClaims)
+	refreshJwt := jwtGo.NewWithClaims(jwtGo.GetSigningMethod("RS256"), oldRefreshTokenClaims)
 
 	// generate the refresh token string
 	return refreshJwt.SignedString(a.signKey)
@@ -518,7 +518,7 @@ func (a *Auth) GrabTokenClaims(w http.ResponseWriter, r *http.Request) (ClaimsTy
 		return ClaimsType{}, errors.New("Unauthorized")
 	}
 	
-	token, _ := jwt.ParseWithClaims(AuthCookie.Value, &ClaimsType{}, func(token *jwt.Token) (interface{}, error) {
+	token, _ := jwtGo.ParseWithClaims(AuthCookie.Value, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
 		return ClaimsType{}, errors.New("Error processing token string claims")
 	})
 	tokenClaims, ok := token.Claims.(*ClaimsType) 

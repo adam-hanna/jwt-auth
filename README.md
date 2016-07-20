@@ -10,7 +10,7 @@ import (
 	"log"
 	"time"
 
-	jwt "github.com/adam-hanna/jwt-auth/src"
+	"github.com/adam-hanna/jwt-auth/jwt"
 )
 
 var restrictedRoute jwt.Auth
@@ -251,7 +251,7 @@ import (
     "log"
 
     "github.com/labstack/echo"
-    jwt "github.com/adam-hanna/jwt-auth/src"
+    "github.com/adam-hanna/jwt-auth/jwt"
 )
 
 var restrictedRoute jwt.Auth
@@ -290,7 +290,7 @@ import (
     "log"
 
     "github.com/gin-gonic/gin"
-    jwt "github.com/adam-hanna/jwt-auth/src"
+    "github.com/adam-hanna/jwt-auth/jwt"
 )
 
 var restrictedRoute jwt.Auth
@@ -340,7 +340,7 @@ import (
     "net/http"
     "log"
 
-    jwt "github.com/adam-hanna/jwt-auth/src"
+    "github.com/adam-hanna/jwt-auth/jwt"
     "github.com/zenazn/goji"
     "github.com/zenazn/goji/web"
 )
@@ -377,7 +377,7 @@ import (
     "log"
 
 	"github.com/kataras/iris"
-	jwt "github.com/adam-hanna/jwt-auth/src"
+	"github.com/adam-hanna/jwt-auth/jwt"
 )
 
 var restrictedRoute jwt.Auth
@@ -427,7 +427,7 @@ import (
     "log"
 
     "github.com/codegangsta/negroni"
-    jwt "github.com/adam-hanna/jwt-auth/src"
+    "github.com/adam-hanna/jwt-auth/jwt"
 )
 
 var restrictedRoute jwt.Auth
