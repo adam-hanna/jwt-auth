@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"log"
 	"time"
-	jwt "github.com/adam-hanna/jwt-auth/src"
+	"github.com/adam-hanna/jwt-auth/jwt"
 )
 
 var restrictedRoute jwt.Auth

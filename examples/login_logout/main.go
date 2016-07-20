@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 	"github.com/adam-hanna/jwt-auth/examples/login_logout/templates"
-	jwt "github.com/adam-hanna/jwt-auth/src"
+	"github.com/adam-hanna/jwt-auth/jwt"
 )
 
 var restrictedRoute jwt.Auth
