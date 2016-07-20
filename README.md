@@ -1,6 +1,7 @@
 # jwt-auth
 jwt auth middleware in goLang
 
+
 ## Quickstart
 ~~~ go
 package main
