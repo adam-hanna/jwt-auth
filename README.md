@@ -3,6 +3,24 @@ jwt auth middleware in goLang
 
 
 ## Quickstart
+
+
+Before trying to run the quickstart,
+
+ 1. Ensure go and the gopath are setup properly
+ 2. Ensure you install/update the following packages:
+ 		- go get -u github.com/dgrijalva/jwt-go
+		- go get -u github.com/adam-hanna/jwt-auth
+ 3. Create the private and public keys that will be used to create the auth tokens, run the following commands:
+    - cd examples (from the adam-hanna/jwt-auth directory - if needed)
+    - mkdir keys;cd keys
+	- openssl genrsa -out app.rsa 2048
+	- openssl rsa -in app.rsa -pubout > app.rsa.pub
+	- cd ..
+4. At this point you are ready to run the quickstart example:
+	  - go run quickstart.go
+
+
 ~~~ go
 package main
 
@@ -65,7 +83,7 @@ The design of this auth system is based around the three major components, liste
 3. CSRF secret string
 
 ### 1. Short-lived (minutes) JWT Auth Token
-The short-lived jwt auth token allows the user to make stateless requests to protected api endpoints and lives in an http only cookie on the client. It has an expiration time of 15 minutes by default and will be refreshed by the longer-lived refresh token. 
+The short-lived jwt auth token allows the user to make stateless requests to protected api endpoints and lives in an http only cookie on the client. It has an expiration time of 15 minutes by default and will be refreshed by the longer-lived refresh token.
 
 ### 2. Longer-lived (hours/days) JWT Refresh Token
 This longer-lived token will be used to update the auth tokens. These tokens will also live in http only cookies on the client. These tokens have a 72 hour expiration time by default which will be updated each time an auth token is refreshed.
@@ -73,7 +91,7 @@ This longer-lived token will be used to update the auth tokens. These tokens wil
 These refresh tokens contain an id which can be revoked by an authorized client.
 
 ### 3. CSRF Secret String
-A CSRF secret string will be provided to each client and will be identical the CSRF secret in the auth and refresh tokens and will change each time an auth token is refreshed. These secrets will live in an "X-CSRF-Token" response header. These secrets will be sent along with the auth and refresh tokens on each api request. 
+A CSRF secret string will be provided to each client and will be identical the CSRF secret in the auth and refresh tokens and will change each time an auth token is refreshed. These secrets will live in an "X-CSRF-Token" response header. These secrets will be sent along with the auth and refresh tokens on each api request.
 
 When request are made to protected endpoint, these CSRF secrets need to be sent to the server either as a hidden form value with a name of "X-CSRF-Token" or in the request header with the key of "X-CSRF-Token". This secret will be checked against the secret provided in the auth token in order to prevent CSRF attacks.
 
@@ -131,7 +149,7 @@ var restrictedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Req
 	csrfSecret := w.Header().Get("X-CSRF-Token")
 	claims, err := restrictedRoute.GrabTokenClaims(w, r)
 	log.Println(claims)
-	
+
 	if err != nil {
 		http.Error(w, "Internal Server Error", 500)
 	} else {
