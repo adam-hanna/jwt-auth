@@ -4,12 +4,14 @@
 package jwt
 
 import (
-	"net/http"
 	"crypto/rsa"
-	"io/ioutil"
-	"time"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
+	"time"
+
 	"github.com/adam-hanna/randomstrings"
 	jwtGo "github.com/dgrijalva/jwt-go"
 )
@@ -18,22 +20,22 @@ type ClaimsType struct {
 	// Standard claims are the standard jwt claims from the ietf standard
 	// https://tools.ietf.org/html/rfc7519
 	jwtGo.StandardClaims
-	Csrf 				string
-	CustomClaims 		map[string]interface{}
+	Csrf         string
+	CustomClaims map[string]interface{}
 }
 
 // Options is a struct for specifying configuration options
 type Options struct {
-	PrivateKeyLocation 		string
-	PublicKeyLocation 		string
-	RefreshTokenValidTime 	time.Duration
-	AuthTokenValidTime 		time.Duration
-	Debug 					bool
-	TokenClaims 			ClaimsType
+	PrivateKeyLocation    string
+	PublicKeyLocation     string
+	RefreshTokenValidTime time.Duration
+	AuthTokenValidTime    time.Duration
+	Debug                 bool
+	TokenClaims           ClaimsType
 }
 
-const defaultRefreshTokenValidTime 	= 72 * time.Hour
-const defaultAuthTokenValidTime 	= 15 * time.Minute
+const defaultRefreshTokenValidTime = 72 * time.Hour
+const defaultAuthTokenValidTime = 15 * time.Minute
 
 func defaultTokenRevoker(tokenId string) error {
 	return nil
@@ -64,16 +66,16 @@ type Auth struct {
 	options Options
 
 	// Handlers for when an error occurs
-	errorHandler 			http.Handler
-	unauthorizedHandler 	http.Handler
+	errorHandler        http.Handler
+	unauthorizedHandler http.Handler
 
 	// funcs for certain actions
-	revokeRefreshToken 	TokenRevoker
-	checkTokenId 		TokenIdChecker
+	revokeRefreshToken TokenRevoker
+	checkTokenId       TokenIdChecker
 }
 
 // New constructs a new Auth instance with supplied options.
-func New(auth *Auth, options ...Options) (error) {
+func New(auth *Auth, options ...Options) error {
 	var o Options
 	if len(options) == 0 {
 		o = Options{}
@@ -116,17 +118,16 @@ func New(auth *Auth, options ...Options) (error) {
 		return err
 	}
 
-	auth.signKey 				= signKey
-	auth.verifyKey 				= verifyKey
-	auth.options 				= o
-	auth.errorHandler 			= http.HandlerFunc(defaultErrorHandler)
-	auth.unauthorizedHandler 	= http.HandlerFunc(defaultUnauthorizedHandler)
-	auth.revokeRefreshToken 	= TokenRevoker(defaultTokenRevoker)
-	auth.checkTokenId 			= TokenIdChecker(defaultCheckTokenId)
+	auth.signKey = signKey
+	auth.verifyKey = verifyKey
+	auth.options = o
+	auth.errorHandler = http.HandlerFunc(defaultErrorHandler)
+	auth.unauthorizedHandler = http.HandlerFunc(defaultUnauthorizedHandler)
+	auth.revokeRefreshToken = TokenRevoker(defaultTokenRevoker)
+	auth.checkTokenId = TokenIdChecker(defaultCheckTokenId)
 
 	return nil
 }
-
 
 // add methods to allow the changing of default functions
 func (a *Auth) SetErrorHandler(handler http.Handler) {
@@ -230,18 +231,18 @@ func (a *Auth) Process(w http.ResponseWriter, r *http.Request) error {
 
 func (a *Auth) NullifyTokenCookies(w *http.ResponseWriter, r *http.Request) {
 	authCookie := http.Cookie{
-		Name: "AuthToken",
-		Value: "",
-		Expires: time.Now().Add(-1000 * time.Hour),
+		Name:     "AuthToken",
+		Value:    "",
+		Expires:  time.Now().Add(-1000 * time.Hour),
 		HttpOnly: true,
 	}
 
 	http.SetCookie(*w, &authCookie)
 
 	refreshCookie := http.Cookie{
-		Name: "RefreshToken",
-		Value: "",
-		Expires: time.Now().Add(-1000 * time.Hour),
+		Name:     "RefreshToken",
+		Value:    "",
+		Expires:  time.Now().Add(-1000 * time.Hour),
 		HttpOnly: true,
 	}
 
@@ -264,16 +265,16 @@ func (a *Auth) NullifyTokenCookies(w *http.ResponseWriter, r *http.Request) {
 
 func setAuthAndRefreshCookies(w *http.ResponseWriter, authTokenString string, refreshTokenString string) {
 	authCookie := http.Cookie{
-		Name: "AuthToken",
-		Value: authTokenString,
+		Name:     "AuthToken",
+		Value:    authTokenString,
 		HttpOnly: true,
 	}
 
 	http.SetCookie(*w, &authCookie)
 
 	refreshCookie := http.Cookie{
-		Name: "RefreshToken",
-		Value: refreshTokenString,
+		Name:     "RefreshToken",
+		Value:    refreshTokenString,
 		HttpOnly: true,
 	}
 
@@ -326,6 +327,9 @@ func (a *Auth) checkAndRefreshTokens(oldAuthTokenString string, oldRefreshTokenS
 
 	// now, check that it matches what's in the auth token claims
 	authToken, err := jwtGo.ParseWithClaims(oldAuthTokenString, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwtGo.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("Incorrent singing method on auth token, method: %v", token.Header["alg"])
+		}
 		return a.verifyKey, nil
 	})
 	authTokenClaims, ok := authToken.Claims.(*ClaimsType)
@@ -337,7 +341,6 @@ func (a *Auth) checkAndRefreshTokens(oldAuthTokenString string, oldRefreshTokenS
 		err = errors.New("Unauthorized")
 		return
 	}
-
 
 	// next, check the auth token in a stateless manner
 	if authToken.Valid {
@@ -403,7 +406,7 @@ func (a *Auth) createRefreshTokenString(claims ClaimsType, csrfString string) (r
 
 func (a *Auth) createAuthTokenString(claims ClaimsType, csrfSecret string) (authTokenString string, err error) {
 	authTokenExp := time.Now().Add(a.options.AuthTokenValidTime).Unix()
-	
+
 	claims.StandardClaims.ExpiresAt = authTokenExp
 	claims.Csrf = csrfSecret
 
@@ -417,11 +420,12 @@ func (a *Auth) createAuthTokenString(claims ClaimsType, csrfSecret string) (auth
 
 func (a *Auth) updateRefreshTokenExp(oldRefreshTokenString string) (string, error) {
 	refreshToken, _ := jwtGo.ParseWithClaims(oldRefreshTokenString, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
-        return a.verifyKey, nil
-    })
+		// no need verify refresh token alg because it was verified at `updateAuthTokenString`
+		return a.verifyKey, nil
+	})
 
-    oldRefreshTokenClaims, ok := refreshToken.Claims.(*ClaimsType)
-    if !ok {
+	oldRefreshTokenClaims, ok := refreshToken.Claims.(*ClaimsType)
+	if !ok {
 		return "", errors.New("Error parsing claims")
 	}
 
@@ -437,6 +441,9 @@ func (a *Auth) updateRefreshTokenExp(oldRefreshTokenString string) (string, erro
 
 func (a *Auth) updateAuthTokenString(refreshTokenString string, oldAuthTokenString string) (newAuthTokenString, csrfSecret string, err error) {
 	refreshToken, err := jwtGo.ParseWithClaims(refreshTokenString, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwtGo.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("Incorrent singing method on refresh token, method: %v", token.Header["alg"])
+		}
 		return a.verifyKey, nil
 	})
 	refreshTokenClaims, ok := refreshToken.Claims.(*ClaimsType)
@@ -462,7 +469,7 @@ func (a *Auth) updateAuthTokenString(refreshTokenString string, oldAuthTokenStri
 			}
 
 			newAuthTokenString, err = a.createAuthTokenString(*refreshTokenClaims, csrfSecret)
-			
+
 			// fyi - updating of refreshtoken csrf and exp is done after calling this func
 			// so we can simply return
 			return
@@ -470,7 +477,7 @@ func (a *Auth) updateAuthTokenString(refreshTokenString string, oldAuthTokenStri
 			a.myLog("Refresh token has expired!")
 			// the refresh token has expired! Require the user to re-authenticate
 			// @adam-hanna: Do we want to revoke the token in our db?
-			// I don't think we need to because it has expired and we can simply check the 
+			// I don't think we need to because it has expired and we can simply check the
 			// exp. No need to update the db.
 
 			err = errors.New("Unauthorized")
@@ -486,11 +493,12 @@ func (a *Auth) updateAuthTokenString(refreshTokenString string, oldAuthTokenStri
 
 func (a *Auth) updateRefreshTokenCsrf(oldRefreshTokenString string, newCsrfString string) (string, error) {
 	refreshToken, _ := jwtGo.ParseWithClaims(oldRefreshTokenString, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
-        return a.verifyKey, nil
-    })
+		// no need verify refresh token alg because it was verified at `updateAuthTokenString`
+		return a.verifyKey, nil
+	})
 
-    oldRefreshTokenClaims, ok := refreshToken.Claims.(*ClaimsType)
-    if !ok {
+	oldRefreshTokenClaims, ok := refreshToken.Claims.(*ClaimsType)
+	if !ok {
 		return "", errors.New("Error parsing claims")
 	}
 
@@ -517,11 +525,11 @@ func (a *Auth) GrabTokenClaims(w http.ResponseWriter, r *http.Request) (ClaimsTy
 		a.errorHandler.ServeHTTP(w, r)
 		return ClaimsType{}, errors.New("Unauthorized")
 	}
-	
+
 	token, _ := jwtGo.ParseWithClaims(AuthCookie.Value, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
 		return ClaimsType{}, errors.New("Error processing token string claims")
 	})
-	tokenClaims, ok := token.Claims.(*ClaimsType) 
+	tokenClaims, ok := token.Claims.(*ClaimsType)
 	if !ok {
 		return ClaimsType{}, errors.New("Error processing token string claims")
 	}
