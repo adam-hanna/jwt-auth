@@ -6,7 +6,6 @@ package jwt
 import (
 	"crypto/rsa"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -328,10 +327,15 @@ func (a *Auth) checkAndRefreshTokens(oldAuthTokenString string, oldRefreshTokenS
 	// now, check that it matches what's in the auth token claims
 	authToken, err := jwtGo.ParseWithClaims(oldAuthTokenString, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwtGo.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("Incorrent singing method on auth token, method: %v", token.Header["alg"])
+			a.myLog("Incorrect singing method on auth token")
+			return nil, errors.New("Incorrect singing method on auth token")
 		}
 		return a.verifyKey, nil
 	})
+	if err != nil {
+		return
+	}
+
 	authTokenClaims, ok := authToken.Claims.(*ClaimsType)
 	if !ok {
 		return
@@ -442,10 +446,15 @@ func (a *Auth) updateRefreshTokenExp(oldRefreshTokenString string) (string, erro
 func (a *Auth) updateAuthTokenString(refreshTokenString string, oldAuthTokenString string) (newAuthTokenString, csrfSecret string, err error) {
 	refreshToken, err := jwtGo.ParseWithClaims(refreshTokenString, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwtGo.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("Incorrent singing method on refresh token, method: %v", token.Header["alg"])
+			a.myLog("Incorrect singing method on auth token")
+			return nil, errors.New("Incorrect singing method on auth token")
 		}
 		return a.verifyKey, nil
 	})
+	if err != nil {
+		return
+	}
+
 	refreshTokenClaims, ok := refreshToken.Claims.(*ClaimsType)
 	if !ok {
 		err = errors.New("Error reading jwt claims")
