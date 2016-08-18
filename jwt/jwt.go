@@ -170,6 +170,12 @@ func (a *Auth) HandlerFuncWithNext(w http.ResponseWriter, r *http.Request, next 
 
 // Process runs the actual checks and returns an error if the middleware chain should stop.
 func (a *Auth) Process(w http.ResponseWriter, r *http.Request) error {
+	// cookies aren't included with options, so simply pass through
+	if r.Method == "OPTIONS" {
+		a.myLog("Method is OPTIONS")
+		return nil
+	}
+
 	// read cookies
 	AuthCookie, authErr := r.Cookie("AuthToken")
 	if authErr == http.ErrNoCookie {
