@@ -170,6 +170,22 @@ w.WriteHeader(http.StatusOK)
 csrfSecret := w.Header().Get("X-CSRF-Token")
 ~~~
 
+### Get the expiration time of the refresh token, in Unix time
+~~~ go
+// in a handler func
+// note: this works because if the middleware has made it this far, the JWT middleware has written this to the response writer (w)
+// note: also, this won't be exact and may be a few milliseconds off from the token's actual expiry
+refreshExpirationTime := w.Header().Get("Refresh-Expiry")
+~~~
+
+### Get the expiration time of the auth token, in Unix time
+~~~ go
+// in a handler func
+// note: this works because if the middleware has made it this far, the JWT middleware has written this to the response writer (w)
+// note: also, this won't be exact and may be a few milliseconds off from the token's actual expiry
+authExpirationTime := w.Header().Get("Auth-Expiry")
+~~~
+
 ### Get claims from a request
 ~~~ go
 // in a handler func
@@ -185,56 +201,64 @@ http.Redirect(w, r, "/login", 302)
 ~~~
 
 ### Token Id checker
-A function used to check a refresh token id against a list of revoked (or blacklisted) id's. Returns true if the token id has not been revoked. This function is run everytime an auth token is refreshed.
+A function used to check if a refresh token id has been revoked. You can either use a blacklist of revoked token, or a whitelist of allowed tokens. Your call. This function simply needs to return true if the token id has not been revoked. This function is run everytime an auth token is refreshed.
 ~~~go
-type TokenIdChecker func(tokenId string) bool
+var restrictedRoute jwt.Auth
 
-func defaultCheckTokenId(tokenId string) bool {
-	// return true if the token id is valid (has not been revoked). False for otherwise
-	return true
-}
+// create a database of refresh tokens
+// map key is the jti (json token identifier)
+// the val doesn't represent anything but could be used to hold "valid", "revoked", etc.
+// in the real world, you would store these in your db. This is just an example.
+var refreshTokens map[string]string
 
-func (a *Auth) SetCheckTokenIdFunction(checker TokenIdChecker) {
-	a.checkTokenId = checker
+restrictedRoute.SetCheckTokenIdFunction(CheckRefreshToken)
+
+func CheckRefreshToken(jti string) bool {
+  return refreshTokens[jti] != ""
 }
 ~~~
 
 ### Token Id revoker
-A function that adds a token id to a blacklist of revoked tokens.
+A function that adds a token id to a blacklist of revoked tokens, or revokes it from a whitelist of allowed tokens (however you'd like to do it).
 ~~~go
-type TokenRevoker func(tokenId string) error
+var restrictedRoute jwt.Auth
 
-func defaultTokenRevoker(tokenId string) error {
-	return nil
-}
+// create a database of refresh tokens
+// map key is the jti (json token identifier)
+// the val doesn't represent anything but could be used to hold "valid", "revoked", etc.
+// in the real world, you would store these in your db. This is just an example.
+var refreshTokens map[string]string
 
-func (a *Auth) SetRevokeTokenFunction(revoker TokenRevoker) {
-	a.revokeRefreshToken = revoker
+restrictedRoute.SetRevokeTokenFunction(DeleteRefreshToken)
+
+func DeleteRefreshToken(jti string) error {
+  delete(refreshTokens, jti)
+  return nil
 }
 ~~~
 
 ### 500 error handling
 Set the response to a 500 error.
 ~~~go
-func defaultErrorHandler(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Internal Server Error", 500)
-}
+var restrictedRoute jwt.Auth
 
-func (a *Auth) SetErrorHandler(handler http.Handler) {
-	a.errorHandler = handler
-}
+restrictedRoute.SetErrorHandler(myErrorHandler)
+
+var myErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+  http.Error(w, "I pitty the fool who has a 500 internal server error", 500)
+})
 ~~~
 
 ### 401 unauthorized handling
 Set the response to a 401 unauthorized request
 ~~~go
-func defaultUnauthorizedHandler(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Unauthorized", 401)
-}
+var restrictedRoute jwt.Auth
 
-func (a *Auth) SetUnauthorizedHandler(handler http.Handler) {
-	a.unauthorizedHandler = handler
-}
+restrictedRoute.SetUnauthorizedHandler(MyUnauthorizedHandler)
+
+var MyUnauthorizedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+  http.Error(w, "I pitty the fool who is unauthorized", 401)
+})
 ~~~
 
 
