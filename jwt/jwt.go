@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/adam-hanna/randomstrings"
@@ -230,6 +231,8 @@ func (a *Auth) Process(w http.ResponseWriter, r *http.Request) error {
 	// And tokens have been refreshed if need-be
 	setAuthAndRefreshCookies(&w, authTokenString, refreshTokenString)
 	w.Header().Set("X-CSRF-Token", csrfSecret)
+	w.Header().Set("Auth-Expiry", strconv.FormatInt(time.Now().Add(a.options.AuthTokenValidTime).Unix(), 10))
+	w.Header().Set("Refresh-Expiry", strconv.FormatInt(time.Now().Add(a.options.RefreshTokenValidTime).Unix(), 10))
 
 	return nil
 }
@@ -264,6 +267,12 @@ func (a *Auth) NullifyTokenCookies(w *http.ResponseWriter, r *http.Request) {
 	} else {
 		a.revokeRefreshToken(RefreshCookie.Value)
 	}
+
+	/*
+	*w.Header().Set("X-CSRF-Token", "")
+	*w.Header().Set("Auth-Expiry", strconv.FormatInt(time.Now().Add(-1000*time.Hour).Unix(), 10))
+	*w.Header().Set("Refresh-Expiry", strconv.FormatInt(time.Now().Add(-1000*time.Hour).Unix(), 10))
+	 */
 
 	return
 }
@@ -303,7 +312,6 @@ func (a *Auth) IssueNewTokens(w http.ResponseWriter, claims ClaimsType) (err err
 	if err != nil {
 		return
 	}
-	w.Header().Set("X-CSRF-Token", csrfSecret)
 
 	// generate the refresh token
 	refreshTokenString, err := a.createRefreshTokenString(claims, csrfSecret)
@@ -315,6 +323,10 @@ func (a *Auth) IssueNewTokens(w http.ResponseWriter, claims ClaimsType) (err err
 	}
 
 	setAuthAndRefreshCookies(&w, authTokenString, refreshTokenString)
+
+	w.Header().Set("X-CSRF-Token", csrfSecret)
+	w.Header().Set("Auth-Expiry", strconv.FormatInt(time.Now().Add(a.options.AuthTokenValidTime).Unix(), 10))
+	w.Header().Set("Refresh-Expiry", strconv.FormatInt(time.Now().Add(a.options.RefreshTokenValidTime).Unix(), 10))
 	// don't need to check for err bc we're returning everything anyway
 	return
 }
