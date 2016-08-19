@@ -201,7 +201,7 @@ http.Redirect(w, r, "/login", 302)
 ~~~
 
 ### Token Id checker
-A function used to check if a refresh token id has been revoked. You can either use a blacklist of revoked token, or a whitelist of allowed tokens. Your call. This function simply needs to return true if the token id has not been revoked. This function is run everytime an auth token is refreshed.
+A function used to check if a refresh token id has been revoked. You can either use a blacklist of revoked tokens, or a whitelist of allowed tokens. Your call. This function simply needs to return true if the token id has not been revoked. This function is run everytime an auth token is refreshed.
 ~~~go
 var restrictedRoute jwt.Auth
 
