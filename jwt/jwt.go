@@ -268,11 +268,9 @@ func (a *Auth) NullifyTokenCookies(w *http.ResponseWriter, r *http.Request) {
 		a.revokeRefreshToken(RefreshCookie.Value)
 	}
 
-	/*
-	*w.Header().Set("X-CSRF-Token", "")
-	*w.Header().Set("Auth-Expiry", strconv.FormatInt(time.Now().Add(-1000*time.Hour).Unix(), 10))
-	*w.Header().Set("Refresh-Expiry", strconv.FormatInt(time.Now().Add(-1000*time.Hour).Unix(), 10))
-	 */
+	setHeader(*w, "X-CSRF-Token", "")
+	setHeader(*w, "Auth-Expiry", strconv.FormatInt(time.Now().Add(-1000*time.Hour).Unix(), 10))
+	setHeader(*w, "Refresh-Expiry", strconv.FormatInt(time.Now().Add(-1000*time.Hour).Unix(), 10))
 
 	return
 }
@@ -350,9 +348,6 @@ func (a *Auth) checkAndRefreshTokens(oldAuthTokenString string, oldRefreshTokenS
 		}
 		return a.verifyKey, nil
 	})
-	if err != nil {
-		return
-	}
 
 	authTokenClaims, ok := authToken.Claims.(*ClaimsType)
 	if !ok {
@@ -469,9 +464,9 @@ func (a *Auth) updateAuthTokenString(refreshTokenString string, oldAuthTokenStri
 		}
 		return a.verifyKey, nil
 	})
-	if err != nil {
-		return
-	}
+	// if err != nil {
+	// 	return
+	// }
 
 	refreshTokenClaims, ok := refreshToken.Claims.(*ClaimsType)
 	if !ok {
@@ -568,4 +563,8 @@ func (a *Auth) myLog(stoofs interface{}) {
 	if a.options.Debug {
 		log.Println(stoofs)
 	}
+}
+
+func setHeader(w http.ResponseWriter, header string, value string) {
+	w.Header().Set(header, value)
 }
