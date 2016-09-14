@@ -26,12 +26,12 @@ var regularHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 func main() {
 	authErr := jwt.New(&restrictedRoute, jwt.Options{
-    SigningMethodString:   "RS256",
+		SigningMethodString: 	 "RS256",
 		PrivateKeyLocation: 	 "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
 		PublicKeyLocation: 		 "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
 		RefreshTokenValidTime: 72 * time.Hour,
 		AuthTokenValidTime: 	 15 * time.Minute,
-		Debug: 					       false,
+		Debug: 								 false,
 	})
 	if authErr != nil {
 		log.Println("Error initializing the JWT's!")
@@ -88,14 +88,14 @@ var restrictedRoute jwt.Auth
 ### JWT middleware options
 ~~~ go
 type Options struct {
-  SigningMethodString   string // one of "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "ES256", "ES384", "ES512"
+	SigningMethodString 	string // one of "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "ES256", "ES384", "ES512"
 	PrivateKeyLocation 		string // only for RSA and ECDSA signing methods
 	PublicKeyLocation 		string // only for RSA and ECDSA signing methods
-  HMACKey               []byte // only for HMAC-SHA signing method
+	HMACKey 							[]byte // only for HMAC-SHA signing method
 	RefreshTokenValidTime time.Duration
 	AuthTokenValidTime 		time.Duration
-	Debug 					      bool
-	TokenClaims 			    ClaimsType
+	Debug 								bool
+	TokenClaims 					ClaimsType
 }
 ~~~
 
@@ -105,8 +105,8 @@ type ClaimsType struct {
 	// Standard claims are the standard jwt claims from the ietf standard
 	// https://tools.ietf.org/html/rfc7519
 	jwt.StandardClaims
-	Csrf 				string
-	CustomClaims 		map[string]interface{}
+	Csrf 							 string
+	CustomClaims 			 map[string]interface{}
 }
 ~~~
 
@@ -115,12 +115,12 @@ You don't have to worry about any of this, except know that there is a "CustomCl
 ### Initialize new JWT middleware
 ~~~ go
 authErr := jwt.New(&restrictedRoute, jwt.Options{
-  SigningMethodString:   "RS256",
+	SigningMethodString: 	 "RS256",
 	PrivateKeyLocation: 	 "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
 	PublicKeyLocation: 		 "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
 	RefreshTokenValidTime: 72 * time.Hour,
 	AuthTokenValidTime: 	 15 * time.Minute,
-	Debug: 					       false,
+	Debug: 								 false,
 })
 if authErr != nil {
 	log.Println("Error initializing the JWT's!")
@@ -218,7 +218,7 @@ var refreshTokens map[string]string
 restrictedRoute.SetCheckTokenIdFunction(CheckRefreshToken)
 
 func CheckRefreshToken(jti string) bool {
-  return refreshTokens[jti] != ""
+	return refreshTokens[jti] != ""
 }
 ~~~
 
@@ -236,8 +236,8 @@ var refreshTokens map[string]string
 restrictedRoute.SetRevokeTokenFunction(DeleteRefreshToken)
 
 func DeleteRefreshToken(jti string) error {
-  delete(refreshTokens, jti)
-  return nil
+	delete(refreshTokens, jti)
+	return nil
 }
 ~~~
 
@@ -249,7 +249,7 @@ var restrictedRoute jwt.Auth
 restrictedRoute.SetErrorHandler(myErrorHandler)
 
 var myErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-  http.Error(w, "I pitty the fool who has a 500 internal server error", 500)
+	http.Error(w, "I pitty the fool who has a 500 internal server error", 500)
 })
 ~~~
 
@@ -261,7 +261,7 @@ var restrictedRoute jwt.Auth
 restrictedRoute.SetUnauthorizedHandler(MyUnauthorizedHandler)
 
 var MyUnauthorizedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-  http.Error(w, "I pitty the fool who is unauthorized", 401)
+	http.Error(w, "I pitty the fool who is unauthorized", 401)
 })
 ~~~
 
@@ -276,38 +276,38 @@ The architecture of this package was inspired by [Secure](https://github.com/unr
 package main
 
 import (
-    "net/http"
-    "log"
+	"net/http"
+	"log"
 
-    "github.com/labstack/echo"
-    "github.com/adam-hanna/jwt-auth/jwt"
+	"github.com/labstack/echo"
+	"github.com/adam-hanna/jwt-auth/jwt"
 )
 
 var restrictedRoute jwt.Auth
 
 func main() {
-    authErr := jwt.New(&restrictedRoute, jwt.Options{
-    SigningMethodString:   "RS256",
+	authErr := jwt.New(&restrictedRoute, jwt.Options{
+		SigningMethodString: 	 "RS256",
 		PrivateKeyLocation: 	 "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
 		PublicKeyLocation: 		 "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
 		RefreshTokenValidTime: 72 * time.Hour,
 		AuthTokenValidTime: 	 15 * time.Minute,
-		Debug: 					       false,
+		Debug: 								 false,
 	})
 	if authErr != nil {
 		log.Println("Error initializing the JWT's!")
 		log.Fatal(authErr)
 	}
 
-    e := echo.New()
+	e := echo.New()
 
-    e.Get("/", func(c *echo.Context) error {
-        c.String(http.StatusOK, "Restricted")
-        return nil
-    })
-    e.Use(restrictedRoute.Handler)
+	e.Get("/", func(c *echo.Context) error {
+		c.String(http.StatusOK, "Restricted")
+		return nil
+	})
+	e.Use(restrictedRoute.Handler)
 
-    e.Run("127.0.0.1:3000")
+	e.Run("127.0.0.1:3000")
 }
 ~~~
 
@@ -317,48 +317,48 @@ func main() {
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/gin-gonic/gin"
-    "github.com/adam-hanna/jwt-auth/jwt"
+	"github.com/gin-gonic/gin"
+	"github.com/adam-hanna/jwt-auth/jwt"
 )
 
 var restrictedRoute jwt.Auth
 
 func main() {
-    authErr := jwt.New(&restrictedRoute, jwt.Options{
-    SigningMethodString:   "RS256",
+	authErr := jwt.New(&restrictedRoute, jwt.Options{
+		SigningMethodString: 	 "RS256",
 		PrivateKeyLocation: 	 "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
 		PublicKeyLocation: 		 "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
 		RefreshTokenValidTime: 72 * time.Hour,
 		AuthTokenValidTime: 	 15 * time.Minute,
-		Debug: 					       false,
+		Debug: 								 false,
 	})
 	if authErr != nil {
 		log.Println("Error initializing the JWT's!")
 		log.Fatal(authErr)
 	}
-    restrictedFunc := func() gin.HandlerFunc {
-        return func(c *gin.Context) {
-            err := restrictedRoute.Process(c.Writer, c.Request)
+	restrictedFunc := func() gin.HandlerFunc {
+		return func(c *gin.Context) {
+			err := restrictedRoute.Process(c.Writer, c.Request)
 
-            // If there was an error, do not continue.
-            if err != nil {
-                return
-            }
+			// If there was an error, do not continue.
+			if err != nil {
+				return
+			}
 
-            c.Next()
-        }
-    }()
+			c.Next()
+		}
+	}()
 
-    router := gin.Default()
-    router.Use(restrictedFunc)
+	router := gin.Default()
+	router.Use(restrictedFunc)
 
-    router.GET("/", func(c *gin.Context) {
-        c.String(200, "Restricted")
-    })
+	router.GET("/", func(c *gin.Context) {
+		c.String(200, "Restricted")
+	})
 
-    router.Run("127.0.0.1:3000")
+	router.Run("127.0.0.1:3000")
 }
 ~~~
 
@@ -368,35 +368,35 @@ func main() {
 package main
 
 import (
-    "net/http"
-    "log"
+	"net/http"
+	"log"
 
-    "github.com/adam-hanna/jwt-auth/jwt"
-    "github.com/zenazn/goji"
-    "github.com/zenazn/goji/web"
+	"github.com/adam-hanna/jwt-auth/jwt"
+	"github.com/zenazn/goji"
+	"github.com/zenazn/goji/web"
 )
 
 var restrictedRoute jwt.Auth
 
 func main() {
-    authErr := jwt.New(&restrictedRoute, jwt.Options{
-    SigningMethodString:   "RS256",
+	authErr := jwt.New(&restrictedRoute, jwt.Options{
+		SigningMethodString: 	 "RS256",
 		PrivateKeyLocation: 	 "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
 		PublicKeyLocation: 		 "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
 		RefreshTokenValidTime: 72 * time.Hour,
 		AuthTokenValidTime: 	 15 * time.Minute,
-		Debug: 					       false,
+		Debug: 								 false,
 	})
 	if authErr != nil {
 		log.Println("Error initializing the JWT's!")
 		log.Fatal(authErr)
 	}
 
-    goji.Get("/", func(c web.C, w http.ResponseWriter, req *http.Request) {
-        w.Write([]byte("Restricted"))
-    })
-    goji.Use(restrictedRoute.Handler)
-    goji.Serve() // Defaults to ":8000".
+	goji.Get("/", func(c web.C, w http.ResponseWriter, req *http.Request) {
+		w.Write([]byte("Restricted"))
+	})
+	goji.Use(restrictedRoute.Handler)
+	goji.Serve() // Defaults to ":8000".
 }
 ~~~
 
@@ -406,7 +406,7 @@ func main() {
 package main
 
 import (
-    "log"
+	"log"
 
 	"github.com/kataras/iris"
 	"github.com/adam-hanna/jwt-auth/jwt"
@@ -416,12 +416,12 @@ var restrictedRoute jwt.Auth
 
 func main() {
 	authErr := jwt.New(&restrictedRoute, jwt.Options{
-    SigningMethodString:   "RS256",
+		SigningMethodString: 	 "RS256",
 		PrivateKeyLocation: 	 "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
 		PublicKeyLocation: 		 "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
 		RefreshTokenValidTime: 72 * time.Hour,
 		AuthTokenValidTime: 	 15 * time.Minute,
-		Debug: 					       false,
+		Debug: 								 false,
 	})
 	if authErr != nil {
 		log.Println("Error initializing the JWT's!")
@@ -456,38 +456,38 @@ Note this implementation has a special helper function called `HandlerFuncWithNe
 package main
 
 import (
-    "net/http"
-    "log"
+	"net/http"
+	"log"
 
-    "github.com/codegangsta/negroni"
-    "github.com/adam-hanna/jwt-auth/jwt"
+	"github.com/codegangsta/negroni"
+	"github.com/adam-hanna/jwt-auth/jwt"
 )
 
 var restrictedRoute jwt.Auth
 
 func main() {
-    mux := http.NewServeMux()
-    mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-        w.Write([]byte("Restricted"))
-    })
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		w.Write([]byte("Restricted"))
+	})
 
-    authErr := jwt.New(&restrictedRoute, jwt.Options{
-    SigningMethodString:   "RS256",
+	authErr := jwt.New(&restrictedRoute, jwt.Options{
+		SigningMethodString: 	 "RS256",
 		PrivateKeyLocation: 	 "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
 		PublicKeyLocation: 		 "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
 		RefreshTokenValidTime: 72 * time.Hour,
 		AuthTokenValidTime: 	 15 * time.Minute,
-		Debug: 					       false,
+		Debug: 								 false,
 	})
 	if authErr != nil {
 		log.Println("Error initializing the JWT's!")
 		log.Fatal(authErr)
 	}
 
-    n := negroni.Classic()
-    n.Use(negroni.HandlerFunc(restrictedRoute.HandlerFuncWithNext))
-    n.UseHandler(mux)
+	n := negroni.Classic()
+	n.Use(negroni.HandlerFunc(restrictedRoute.HandlerFuncWithNext))
+	n.UseHandler(mux)
 
-    n.Run("127.0.0.1:3000")
+	n.Run("127.0.0.1:3000")
 }
 ~~~
