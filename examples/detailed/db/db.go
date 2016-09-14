@@ -4,11 +4,11 @@
 package db
 
 import (
-	"github.com/adam-hanna/jwt-auth/examples/detailed/db/models"
-	"github.com/adam-hanna/jwt-auth/examples/detailed/randomstrings"
-	
-	"golang.org/x/crypto/bcrypt"
+	"../randomstrings"
+	"./models"
+
 	"errors"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 )
 
@@ -33,7 +33,7 @@ func StoreUser(username string, password string, role string) (uuid string, err 
 	}
 
 	// check to make sure our uuid is unique
-	u := models.User{};
+	u := models.User{}
 	for u != users[uuid] {
 		uuid, err = randomstrings.GenerateRandomString(32)
 		if err != nil {
@@ -45,10 +45,10 @@ func StoreUser(username string, password string, role string) (uuid string, err 
 	passwordHash, hashErr := generateBcryptHash(password)
 	if hashErr != nil {
 		err = hashErr
-		return 
+		return
 	}
 
-	users[uuid] = models.User{ username, passwordHash, role }
+	users[uuid] = models.User{username, passwordHash, role}
 
 	return uuid, err
 }
@@ -58,8 +58,8 @@ func DeleteUser(uuid string) {
 }
 
 func FetchUserById(uuid string) (models.User, error) {
-	u 			:= users[uuid]
-	blankUser 	:= models.User{}
+	u := users[uuid]
+	blankUser := models.User{}
 
 	if blankUser != u {
 		// found the user

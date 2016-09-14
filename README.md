@@ -26,11 +26,12 @@ var regularHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 func main() {
 	authErr := jwt.New(&restrictedRoute, jwt.Options{
-		PrivateKeyLocation: 	"keys/app.rsa", // `$ openssl genrsa -out app.rsa 2048`
-		PublicKeyLocation: 		"keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
-		RefreshTokenValidTime: 	72 * time.Hour,
-		AuthTokenValidTime: 	15 * time.Minute,
-		Debug: 					false,
+    SigningMethodString:   "RS256",
+		PrivateKeyLocation: 	 "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
+		PublicKeyLocation: 		 "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
+		RefreshTokenValidTime: 72 * time.Hour,
+		AuthTokenValidTime: 	 15 * time.Minute,
+		Debug: 					       false,
 	})
 	if authErr != nil {
 		log.Println("Error initializing the JWT's!")
@@ -87,12 +88,14 @@ var restrictedRoute jwt.Auth
 ### JWT middleware options
 ~~~ go
 type Options struct {
-	PrivateKeyLocation 		string
-	PublicKeyLocation 		string
-	RefreshTokenValidTime 	time.Duration
+  SigningMethodString   string // one of "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "ES256", "ES384", "ES512"
+	PrivateKeyLocation 		string // only for RSA and ECDSA signing methods
+	PublicKeyLocation 		string // only for RSA and ECDSA signing methods
+  HMACKey               []byte // only for HMAC-SHA signing method
+	RefreshTokenValidTime time.Duration
 	AuthTokenValidTime 		time.Duration
-	Debug 					bool
-	TokenClaims 			ClaimsType
+	Debug 					      bool
+	TokenClaims 			    ClaimsType
 }
 ~~~
 
@@ -112,11 +115,12 @@ You don't have to worry about any of this, except know that there is a "CustomCl
 ### Initialize new JWT middleware
 ~~~ go
 authErr := jwt.New(&restrictedRoute, jwt.Options{
-	PrivateKeyLocation: 	"keys/app.rsa", // `$ openssl genrsa -out app.rsa 2048`
-	PublicKeyLocation: 		"keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
-	RefreshTokenValidTime: 	72 * time.Hour,
-	AuthTokenValidTime: 	15 * time.Minute,
-	Debug: 					false,
+  SigningMethodString:   "RS256",
+	PrivateKeyLocation: 	 "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
+	PublicKeyLocation: 		 "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
+	RefreshTokenValidTime: 72 * time.Hour,
+	AuthTokenValidTime: 	 15 * time.Minute,
+	Debug: 					       false,
 })
 if authErr != nil {
 	log.Println("Error initializing the JWT's!")
@@ -283,11 +287,12 @@ var restrictedRoute jwt.Auth
 
 func main() {
     authErr := jwt.New(&restrictedRoute, jwt.Options{
-		PrivateKeyLocation: 	"keys/app.rsa", // `$ openssl genrsa -out app.rsa 2048`
-		PublicKeyLocation: 		"keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
-		RefreshTokenValidTime: 	72 * time.Hour,
-		AuthTokenValidTime: 	15 * time.Minute,
-		Debug: 					false,
+    SigningMethodString:   "RS256",
+		PrivateKeyLocation: 	 "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
+		PublicKeyLocation: 		 "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
+		RefreshTokenValidTime: 72 * time.Hour,
+		AuthTokenValidTime: 	 15 * time.Minute,
+		Debug: 					       false,
 	})
 	if authErr != nil {
 		log.Println("Error initializing the JWT's!")
@@ -322,11 +327,12 @@ var restrictedRoute jwt.Auth
 
 func main() {
     authErr := jwt.New(&restrictedRoute, jwt.Options{
-		PrivateKeyLocation: 	"keys/app.rsa", // `$ openssl genrsa -out app.rsa 2048`
-		PublicKeyLocation: 		"keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
-		RefreshTokenValidTime: 	72 * time.Hour,
-		AuthTokenValidTime: 	15 * time.Minute,
-		Debug: 					false,
+    SigningMethodString:   "RS256",
+		PrivateKeyLocation: 	 "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
+		PublicKeyLocation: 		 "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
+		RefreshTokenValidTime: 72 * time.Hour,
+		AuthTokenValidTime: 	 15 * time.Minute,
+		Debug: 					       false,
 	})
 	if authErr != nil {
 		log.Println("Error initializing the JWT's!")
@@ -374,11 +380,12 @@ var restrictedRoute jwt.Auth
 
 func main() {
     authErr := jwt.New(&restrictedRoute, jwt.Options{
-		PrivateKeyLocation: 	"keys/app.rsa", // `$ openssl genrsa -out app.rsa 2048`
-		PublicKeyLocation: 		"keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
-		RefreshTokenValidTime: 	72 * time.Hour,
-		AuthTokenValidTime: 	15 * time.Minute,
-		Debug: 					false,
+    SigningMethodString:   "RS256",
+		PrivateKeyLocation: 	 "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
+		PublicKeyLocation: 		 "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
+		RefreshTokenValidTime: 72 * time.Hour,
+		AuthTokenValidTime: 	 15 * time.Minute,
+		Debug: 					       false,
 	})
 	if authErr != nil {
 		log.Println("Error initializing the JWT's!")
@@ -409,11 +416,12 @@ var restrictedRoute jwt.Auth
 
 func main() {
 	authErr := jwt.New(&restrictedRoute, jwt.Options{
-		PrivateKeyLocation: 	"keys/app.rsa", // `$ openssl genrsa -out app.rsa 2048`
-		PublicKeyLocation: 		"keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
-		RefreshTokenValidTime: 	72 * time.Hour,
-		AuthTokenValidTime: 	15 * time.Minute,
-		Debug: 					false,
+    SigningMethodString:   "RS256",
+		PrivateKeyLocation: 	 "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
+		PublicKeyLocation: 		 "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
+		RefreshTokenValidTime: 72 * time.Hour,
+		AuthTokenValidTime: 	 15 * time.Minute,
+		Debug: 					       false,
 	})
 	if authErr != nil {
 		log.Println("Error initializing the JWT's!")
@@ -464,11 +472,12 @@ func main() {
     })
 
     authErr := jwt.New(&restrictedRoute, jwt.Options{
-		PrivateKeyLocation: 	"keys/app.rsa", // `$ openssl genrsa -out app.rsa 2048`
-		PublicKeyLocation: 		"keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
-		RefreshTokenValidTime: 	72 * time.Hour,
-		AuthTokenValidTime: 	15 * time.Minute,
-		Debug: 					false,
+    SigningMethodString:   "RS256",
+		PrivateKeyLocation: 	 "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
+		PublicKeyLocation: 		 "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
+		RefreshTokenValidTime: 72 * time.Hour,
+		AuthTokenValidTime: 	 15 * time.Minute,
+		Debug: 					       false,
 	})
 	if authErr != nil {
 		log.Println("Error initializing the JWT's!")

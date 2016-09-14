@@ -1,9 +1,9 @@
 package main
 
 import (
+	"./db"
+	"./server"
 	"log"
-	"github.com/adam-hanna/jwt-auth/examples/detailed/db"
-	"github.com/adam-hanna/jwt-auth/examples/detailed/server"
 )
 
 var host = "localhost"

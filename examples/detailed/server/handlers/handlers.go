@@ -4,11 +4,11 @@ import (
 	"github.com/justinas/alice"
 	"log"
 	"net/http"
-	"time"
 	"strings"
+	"time"
 
-	"github.com/adam-hanna/jwt-auth/examples/detailed/server/templates"
-	"github.com/adam-hanna/jwt-auth/examples/detailed/db"
+	"../../db"
+	"../templates"
 	"github.com/adam-hanna/jwt-auth/jwt"
 )
 
@@ -16,11 +16,12 @@ var restrictedRoute jwt.Auth
 
 func InitHandlers() error {
 	newRouteError := jwt.New(&restrictedRoute, jwt.Options{
-		PrivateKeyLocation: 	"keys/app.rsa", 	// `$ openssl genrsa -out app.rsa 2048`
-		PublicKeyLocation: 		"keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
-		RefreshTokenValidTime: 	72 * time.Hour,
-		AuthTokenValidTime: 	15 * time.Minute,
-		Debug: 					true,
+		SigningMethodString:   "RS256",
+		PrivateKeyLocation:    "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
+		PublicKeyLocation:     "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
+		RefreshTokenValidTime: 72 * time.Hour,
+		AuthTokenValidTime:    15 * time.Minute,
+		Debug:                 true,
 	})
 	if newRouteError != nil {
 		return newRouteError
@@ -28,7 +29,7 @@ func InitHandlers() error {
 
 	restrictedRoute.SetUnauthorizedHandler(MyUnauthorizedHandler)
 	restrictedRoute.SetErrorHandler(myErrorHandler)
-	
+
 	restrictedRoute.SetRevokeTokenFunction(db.DeleteRefreshToken)
 	restrictedRoute.SetCheckTokenIdFunction(db.CheckRefreshToken)
 
@@ -68,13 +69,13 @@ func recoverHandler(next http.Handler) http.Handler {
 
 var restrictedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	csrfSecret := w.Header().Get("X-CSRF-Token")
-	templates.RenderTemplate(w, "restricted", &templates.RestrictedPage{ csrfSecret, "Stoofs!" })
+	templates.RenderTemplate(w, "restricted", &templates.RestrictedPage{csrfSecret, "Stoofs!"})
 })
 
 var loginHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		templates.RenderTemplate(w, "login", &templates.LoginPage{ false, "" })
+		templates.RenderTemplate(w, "login", &templates.LoginPage{false, ""})
 
 	case "POST":
 		r.ParseForm()
@@ -94,11 +95,11 @@ var loginHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 				http.Error(w, http.StatusText(500), 500)
 			}
 
-			claims 							:= jwt.ClaimsType{}
-			claims.StandardClaims.Subject 	= uuid
-			claims.StandardClaims.Id 		= claimsId
-			claims.CustomClaims 			= make(map[string]interface{})
-			claims.CustomClaims["Role"] 	= user.Role
+			claims := jwt.ClaimsType{}
+			claims.StandardClaims.Subject = uuid
+			claims.StandardClaims.Id = claimsId
+			claims.CustomClaims = make(map[string]interface{})
+			claims.CustomClaims["Role"] = user.Role
 
 			err := restrictedRoute.IssueNewTokens(w, claims)
 			if err != nil {
@@ -116,8 +117,8 @@ var loginHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 var registerHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		templates.RenderTemplate(w, "register", &templates.RegisterPage{ false, "" })
-	
+		templates.RenderTemplate(w, "register", &templates.RegisterPage{false, ""})
+
 	case "POST":
 		r.ParseForm()
 		log.Println(r.Form)
@@ -125,7 +126,7 @@ var registerHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		// check to see if the username is already taken
 		_, uuid, err := db.FetchUserByUsername(strings.Join(r.Form["username"], ""))
 		if err == nil {
-			templates.RenderTemplate(w, "register", &templates.RegisterPage{ true, "Username not available!" })
+			templates.RenderTemplate(w, "register", &templates.RegisterPage{true, "Username not available!"})
 			// w.WriteHeader(http.StatusUnauthorized)
 		} else {
 			// nope, now create this user
@@ -142,11 +143,11 @@ var registerHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				http.Error(w, http.StatusText(500), 500)
 			}
 
-			claims 							:= jwt.ClaimsType{}
-			claims.StandardClaims.Subject	= uuid
-			claims.StandardClaims.Id 		= claimsId
-			claims.CustomClaims 			= make(map[string]interface{})
-			claims.CustomClaims["Role"] 	= role
+			claims := jwt.ClaimsType{}
+			claims.StandardClaims.Subject = uuid
+			claims.StandardClaims.Id = claimsId
+			claims.CustomClaims = make(map[string]interface{})
+			claims.CustomClaims["Role"] = role
 
 			err := restrictedRoute.IssueNewTokens(w, claims)
 			if err != nil {

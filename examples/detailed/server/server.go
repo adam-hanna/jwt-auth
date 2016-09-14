@@ -1,9 +1,9 @@
 package server
 
 import (
+	"./handlers"
 	"log"
 	"net/http"
-	"github.com/adam-hanna/jwt-auth/examples/detailed/server/handlers"
 )
 
 func StartServer(hostname string, port string) error {

@@ -1,0 +1,17 @@
+<html>
+	<head>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.0.0/jquery.min.js"></script>
+		<meta content="{{ .CsrfSecret }}" name="csrf-token" />
+	</head>
+
+	<body>
+		<h1>Welcome to the super secret area</h1>
+		<h3>Your role is: {{ .Role }}</h3>
+		<p>Your csrf secret is {{ .CsrfSecret }}</p>
+		<br><br>
+		<form name="logout" action="/logout" method="POST">
+			<input hidden name="X-CSRF-Token" value="{{ .CsrfSecret }}" />
+			<input type="submit" value="Log Out" />
+		</form>
+	</body>
+</html>
