@@ -4,7 +4,6 @@
 package jwt
 
 import (
-	"crypto/rsa"
 	"errors"
 	"io/ioutil"
 	"log"
@@ -26,8 +25,10 @@ type ClaimsType struct {
 
 // Options is a struct for specifying configuration options
 type Options struct {
+	SigningMethodString   string
 	PrivateKeyLocation    string
 	PublicKeyLocation     string
+	HMACKey               []byte
 	RefreshTokenValidTime time.Duration
 	AuthTokenValidTime    time.Duration
 	Debug                 bool
@@ -60,8 +61,8 @@ func defaultUnauthorizedHandler(w http.ResponseWriter, r *http.Request) {
 
 // Auth is a middleware that provides jwt based authentication.
 type Auth struct {
-	signKey   *rsa.PrivateKey
-	verifyKey *rsa.PublicKey
+	signKey   interface{}
+	verifyKey interface{}
 
 	options Options
 
@@ -69,7 +70,7 @@ type Auth struct {
 	errorHandler        http.Handler
 	unauthorizedHandler http.Handler
 
-	// funcs for certain actions
+	// funcs for checking and revoking refresh tokens
 	revokeRefreshToken TokenRevoker
 	checkTokenId       TokenIdChecker
 }
@@ -83,11 +84,6 @@ func New(auth *Auth, options ...Options) error {
 		o = options[0]
 	}
 
-	// check to make sure the provided options are valid
-	if o.PrivateKeyLocation == "" || o.PublicKeyLocation == "" {
-		return errors.New("Private and public key locations are required!")
-	}
-
 	// check if durations have been provided for auth and refresh token exp
 	// if not, set them equal to the default
 	if o.RefreshTokenValidTime <= 0 {
@@ -97,25 +93,72 @@ func New(auth *Auth, options ...Options) error {
 		o.AuthTokenValidTime = defaultAuthTokenValidTime
 	}
 
-	// read the key files
-	signBytes, err := ioutil.ReadFile(o.PrivateKeyLocation)
-	if err != nil {
-		return err
-	}
+	// create the sign and verify keys
+	var signKey interface{}
+	var verifyKey interface{}
+	if o.SigningMethodString == "HS256" || o.SigningMethodString == "HS384" || o.SigningMethodString == "HS512" {
+		if len(o.HMACKey) == 0 {
+			return errors.New("When using an HMAC-SHA signing method, please provide a HMACKey")
+		}
+		signKey = o.HMACKey
+		verifyKey = o.HMACKey
 
-	signKey, err := jwtGo.ParseRSAPrivateKeyFromPEM(signBytes)
-	if err != nil {
-		return err
-	}
+	} else if o.SigningMethodString == "RS256" || o.SigningMethodString == "RS384" || o.SigningMethodString == "RS512" {
+		// check to make sure the provided options are valid
+		if o.PrivateKeyLocation == "" || o.PublicKeyLocation == "" {
+			return errors.New("Private and public key locations are required!")
+		}
 
-	verifyBytes, err := ioutil.ReadFile(o.PublicKeyLocation)
-	if err != nil {
-		return err
-	}
+		// read the key files
+		signBytes, err := ioutil.ReadFile(o.PrivateKeyLocation)
+		if err != nil {
+			return err
+		}
 
-	verifyKey, err := jwtGo.ParseRSAPublicKeyFromPEM(verifyBytes)
-	if err != nil {
-		return err
+		signKey, err = jwtGo.ParseRSAPrivateKeyFromPEM(signBytes)
+		if err != nil {
+			return err
+		}
+
+		verifyBytes, err := ioutil.ReadFile(o.PublicKeyLocation)
+		if err != nil {
+			return err
+		}
+
+		verifyKey, err = jwtGo.ParseRSAPublicKeyFromPEM(verifyBytes)
+		if err != nil {
+			return err
+		}
+
+	} else if o.SigningMethodString == "ES256" || o.SigningMethodString == "ES384" || o.SigningMethodString == "ES512" {
+		// check to make sure the provided options are valid
+		if o.PrivateKeyLocation == "" || o.PublicKeyLocation == "" {
+			return errors.New("Private and public key locations are required!")
+		}
+
+		// read the key files
+		signBytes, err := ioutil.ReadFile(o.PrivateKeyLocation)
+		if err != nil {
+			return err
+		}
+
+		signKey, err = jwtGo.ParseECPrivateKeyFromPEM(signBytes)
+		if err != nil {
+			return err
+		}
+
+		verifyBytes, err := ioutil.ReadFile(o.PublicKeyLocation)
+		if err != nil {
+			return err
+		}
+
+		verifyKey, err = jwtGo.ParseECPublicKeyFromPEM(verifyBytes)
+		if err != nil {
+			return err
+		}
+
+	} else {
+		return errors.New("Signing method string not recognized!")
 	}
 
 	auth.signKey = signKey
@@ -342,7 +385,7 @@ func (a *Auth) checkAndRefreshTokens(oldAuthTokenString string, oldRefreshTokenS
 
 	// now, check that it matches what's in the auth token claims
 	authToken, err := jwtGo.ParseWithClaims(oldAuthTokenString, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwtGo.SigningMethodRSA); !ok {
+		if token.Method != jwtGo.GetSigningMethod(a.options.SigningMethodString) {
 			a.myLog("Incorrect singing method on auth token")
 			return nil, errors.New("Incorrect singing method on auth token")
 		}
@@ -413,8 +456,8 @@ func (a *Auth) createRefreshTokenString(claims ClaimsType, csrfString string) (r
 	claims.StandardClaims.ExpiresAt = refreshTokenExp
 	claims.Csrf = csrfString
 
-	// create a signer for rsa 256
-	refreshJwt := jwtGo.NewWithClaims(jwtGo.GetSigningMethod("RS256"), claims)
+	// create a signer
+	refreshJwt := jwtGo.NewWithClaims(jwtGo.GetSigningMethod(a.options.SigningMethodString), claims)
 
 	// generate the refresh token string
 	refreshTokenString, err = refreshJwt.SignedString(a.signKey)
@@ -427,8 +470,8 @@ func (a *Auth) createAuthTokenString(claims ClaimsType, csrfSecret string) (auth
 	claims.StandardClaims.ExpiresAt = authTokenExp
 	claims.Csrf = csrfSecret
 
-	// create a signer for rsa 256
-	authJwt := jwtGo.NewWithClaims(jwtGo.GetSigningMethod("RS256"), claims)
+	// create a signer
+	authJwt := jwtGo.NewWithClaims(jwtGo.GetSigningMethod(a.options.SigningMethodString), claims)
 
 	// generate the auth token string
 	authTokenString, err = authJwt.SignedString(a.signKey)
@@ -449,8 +492,8 @@ func (a *Auth) updateRefreshTokenExp(oldRefreshTokenString string) (string, erro
 	refreshTokenExp := time.Now().Add(a.options.RefreshTokenValidTime).Unix()
 	oldRefreshTokenClaims.StandardClaims.ExpiresAt = refreshTokenExp
 
-	// create a signer for rsa 256
-	refreshJwt := jwtGo.NewWithClaims(jwtGo.GetSigningMethod("RS256"), oldRefreshTokenClaims)
+	// create a signer
+	refreshJwt := jwtGo.NewWithClaims(jwtGo.GetSigningMethod(a.options.SigningMethodString), oldRefreshTokenClaims)
 
 	// generate the refresh token string
 	return refreshJwt.SignedString(a.signKey)
@@ -458,7 +501,7 @@ func (a *Auth) updateRefreshTokenExp(oldRefreshTokenString string) (string, erro
 
 func (a *Auth) updateAuthTokenString(refreshTokenString string, oldAuthTokenString string) (newAuthTokenString, csrfSecret string, err error) {
 	refreshToken, err := jwtGo.ParseWithClaims(refreshTokenString, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwtGo.SigningMethodRSA); !ok {
+		if token.Method != jwtGo.GetSigningMethod(a.options.SigningMethodString) {
 			a.myLog("Incorrect singing method on auth token")
 			return nil, errors.New("Incorrect singing method on auth token")
 		}
@@ -526,8 +569,8 @@ func (a *Auth) updateRefreshTokenCsrf(oldRefreshTokenString string, newCsrfStrin
 
 	oldRefreshTokenClaims.Csrf = newCsrfString
 
-	// create a signer for rsa 256
-	refreshJwt := jwtGo.NewWithClaims(jwtGo.GetSigningMethod("RS256"), oldRefreshTokenClaims)
+	// create a signer
+	refreshJwt := jwtGo.NewWithClaims(jwtGo.GetSigningMethod(a.options.SigningMethodString), oldRefreshTokenClaims)
 
 	// generate the refresh token string
 	return refreshJwt.SignedString(a.signKey)
