@@ -89,9 +89,10 @@ var restrictedRoute jwt.Auth
 ~~~ go
 type Options struct {
   SigningMethodString   string // one of "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "ES256", "ES384", "ES512"
-  PrivateKeyLocation    string // only for RSA and ECDSA signing methods
+  PrivateKeyLocation    string // only for RSA and ECDSA signing methods; only required if VerifyOnlyServer is false
   PublicKeyLocation     string // only for RSA and ECDSA signing methods
   HMACKey               []byte // only for HMAC-SHA signing method
+  VerifyOnlyServer      bool // false = server can verify and issue tokens (default); true = server can only verify tokens
   RefreshTokenValidTime time.Duration
   AuthTokenValidTime    time.Duration
   Debug                 bool
