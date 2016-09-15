@@ -1,0 +1,141 @@
+<html>
+	<head>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.0.0/jquery.min.js"></script>
+	</head>
+
+	<body>
+		<div id="login">
+			<h1>Login</h1>
+			<form id="login" name="login" onsubmit="return DoSubmit();">
+				<input id="username" class="fullWidth" name="username" type="text" placeholder="username" />
+				<input id="password" class="fullWidth" name="password" type="password" placeholder="password" />
+
+				<input type="Submit" value="Login" />
+			</form>
+			<br><br>
+			<div id="loggedIn" class="fullWidth">
+				<span>Your secret is: </span><span id="secret">Please Login First!</span><button id="refreshSecret">Refresh Secret</button>
+				<br><br>
+				<button id="logout">Log Out</button>
+			</div>
+		</div>
+
+		<style>
+			html, body {
+				height: 100%;
+				width: 100%;
+				
+				margin: 0px;
+				padding: 0px;
+			}
+
+			#login {
+				text-align: center;
+
+				width: 75%;
+				max-width: 600px;
+
+				margin: 0 auto;
+			}
+
+			.fullWidth {
+				width: 100%;
+			}
+
+			input {
+				margin-top: 5px;
+			}
+
+			h1 {
+				margin-top: 25px;
+			}
+		</style>
+
+		<script>
+			function DoSubmit() {
+				$.ajax({
+					'type': 	'POST',
+					'url': 		'/',
+					'data': 	{
+						'username': $('#username').val(),
+						'password': $('#password').val()
+					},
+					success: function(data, textStatus, request) {
+						console.log("Success!", data, textStatus, request);
+
+						window.localStorage.setItem("X-CSRF-Token", request.getResponseHeader("X-CSRF-Token"));
+						window.localStorage.setItem("Auth_Token", request.getResponseHeader("Auth_Token"));
+						window.localStorage.setItem("Refresh_Token", request.getResponseHeader("Refresh_Token"));
+
+						$("#secret").html(data.secret);
+					},
+					error: function (request, textStatus, errorThrown) {
+						console.log("Error!", request.getResponseHeader('X-CSRF-Token'));
+					}
+				});
+
+				return false;
+			}
+
+			$("#refreshSecret").on("click", function() {
+				var data = {
+					"Auth_Token":    window.localStorage.getItem("Auth_Token"),
+					"Refresh_Token": window.localStorage.getItem("Refresh_Token")
+				};
+				var headers = {
+					"Authorization": "Basic " + window.localStorage.getItem("X-CSRF-Token")
+				};
+				
+				$.ajax({
+					'type': 	 		 'POST',
+					'url': 		 		 '/refreshSecret',
+					'headers': 		 headers,
+					'data': 	 		 JSON.stringify(data),
+      		'dataType':  	 'json',
+      		'contentType': 'application/json',
+					success: function(data, textStatus, request) {
+						console.log("Success!", data, textStatus, request);
+						
+						window.localStorage.setItem("X-CSRF-Token", request.getResponseHeader("X-CSRF-Token"));
+						window.localStorage.setItem("Auth_Token", request.getResponseHeader("Auth_Token"));
+						window.localStorage.setItem("Refresh_Token", request.getResponseHeader("Refresh_Token"));
+
+						$("#secret").html(data.secret);
+					},
+					error: function (request, textStatus, errorThrown) {
+						console.log("Error!", request, textStatus, errorThrown);
+					}
+				});
+			});
+
+			$("#logout").on("click", function() {
+				var data = {
+					"Auth_Token":    window.localStorage.getItem("Auth_Token"),
+					"Refresh_Token": window.localStorage.getItem("Refresh_Token")
+				};
+				var headers = {
+					"Authorization": "Basic " + window.localStorage.getItem("X-CSRF-Token")
+				};
+
+				$.ajax({
+					'type': 	 'POST',
+					'url': 		 '/logout',
+					'headers': headers,
+					'data': 	 data,
+					success: function(data, textStatus, request) {
+						console.log("Success!", data, textStatus, request);
+						
+						window.localStorage.setItem("X-CSRF-Token", "");
+						window.localStorage.setItem("Auth_Token", "");
+						window.localStorage.setItem("Refresh_Token", "");
+
+						$("#secret").html("Please login!");
+					},
+					error: function (request, textStatus, errorThrown) {
+						console.log("Error!", request, textStatus, errorThrown);
+					}
+				});
+			});
+		</script>
+	</body>
+</html>

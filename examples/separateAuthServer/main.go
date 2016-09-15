@@ -15,8 +15,6 @@ var restrictedRoute jwt.Auth
 var authRoute jwt.Auth
 
 var myUnauthorizedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// func myUnauthorizedHandler(h http.Handler) http.Handler {
-	// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	// tokens are invalid, so we need to ask our auth server for new ones
 	req, err := http.NewRequest("GET", "http://localhost:3001/refreshClaims", nil)
 	if err != nil {
@@ -97,16 +95,34 @@ var myUnauthorizedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http
 			return
 		}
 
-		http.SetCookie(w, rc[authCookieIndex])
-		http.SetCookie(w, rc[refreshCookieIndex])
+		rc2 := resp2.Cookies()
+		authCookieIndex2 := -1
+		refreshCookieIndex2 := -1
+		for i, cookie := range rc2 {
+			if cookie.Name == "AuthToken" {
+				authCookieIndex2 = i
+			}
+			if cookie.Name == "RefreshToken" {
+				refreshCookieIndex2 = i
+			}
+		}
 
-		w.Header().Set("X-CSRF-Token", resp.Header.Get("X-CSRF-Token"))
-		w.Header().Set("Auth-Expiry", resp.Header.Get("Auth-Expiry"))
-		w.Header().Set("Refresh-Expiry", resp.Header.Get("Refresh-Expiry"))
+		if authCookieIndex2 >= 0 {
+			http.SetCookie(w, rc2[authCookieIndex2])
+		}
+		if refreshCookieIndex2 >= 0 {
+			http.SetCookie(w, rc2[refreshCookieIndex2])
+		}
+
+		w.Header().Set("X-CSRF-Token", resp2.Header.Get("X-CSRF-Token"))
+		w.Header().Set("Auth-Expiry", resp2.Header.Get("Auth-Expiry"))
+		w.Header().Set("Refresh-Expiry", resp2.Header.Get("Refresh-Expiry"))
 
 		for k, v := range resp2.Header {
 			w.Header().Set(k, strings.Join(v, ""))
 		}
+
+		w.WriteHeader(resp2.StatusCode)
 
 		defer resp2.Body.Close()
 		body, err := ioutil.ReadAll(resp2.Body)
@@ -120,8 +136,6 @@ var myUnauthorizedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http
 		return
 	}
 })
-
-// }
 
 var restrictedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	csrfSecret := w.Header().Get("X-CSRF-Token")
@@ -206,7 +220,7 @@ var logoutHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	switch r.Method {
 	case "POST":
 		log.Println("In logout post")
-		restrictedRoute.NullifyTokenCookies(&w, r)
+		restrictedRoute.NullifyTokens(&w, r)
 		http.Redirect(w, r, "/login", 302)
 
 	default:
@@ -222,6 +236,7 @@ func main() {
 		RefreshTokenValidTime: 72 * time.Hour,
 		AuthTokenValidTime:    5 * time.Second,
 		Debug:                 true,
+		IsDevEnv:              true,
 	})
 	if jwtErr != nil {
 		log.Println("Error initializing authRoute JWT's!")
@@ -232,6 +247,7 @@ func main() {
 		VerifyOnlyServer:    true,
 		PublicKeyLocation:   "keys/app.rsa.pub",
 		Debug:               true,
+		IsDevEnv:            true,
 	})
 	if jwtErr != nil {
 		log.Println("Error initializing restrictedRoute JWT's!")
