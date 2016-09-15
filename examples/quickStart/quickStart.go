@@ -26,6 +26,7 @@ func main() {
 		RefreshTokenValidTime: 72 * time.Hour,
 		AuthTokenValidTime:    15 * time.Minute,
 		Debug:                 true,
+		IsDevEnv:              true,
 	})
 	if authErr != nil {
 		log.Println("Error initializing the JWT's!")

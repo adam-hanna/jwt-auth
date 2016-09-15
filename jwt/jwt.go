@@ -4,11 +4,14 @@
 package jwt
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/adam-hanna/randomstrings"
@@ -30,10 +33,11 @@ type Options struct {
 	PublicKeyLocation     string
 	HMACKey               []byte
 	VerifyOnlyServer      bool
+	BearerTokens          bool
 	RefreshTokenValidTime time.Duration
 	AuthTokenValidTime    time.Duration
 	Debug                 bool
-	TokenClaims           ClaimsType
+	IsDevEnv              bool
 }
 
 const defaultRefreshTokenValidTime = 72 * time.Hour
@@ -60,6 +64,12 @@ func defaultErrorHandler(w http.ResponseWriter, r *http.Request) {
 func defaultUnauthorizedHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Unauthorized", 401)
 	return
+}
+
+// this is a general json struct for when bearer tokens are used
+type bearerTokensStruct struct {
+	Auth_Token    string `json: "Auth_Token"`
+	Refresh_Token string `json: "Refresh_Token"`
 }
 
 // Auth is a middleware that provides jwt based authentication.
@@ -229,38 +239,70 @@ func (a *Auth) Process(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	// read cookies
-	AuthCookie, authErr := r.Cookie("AuthToken")
-	if authErr == http.ErrNoCookie {
-		a.myLog("Unauthorized attempt! No auth cookie")
-		a.NullifyTokenCookies(&w, r)
-		a.unauthorizedHandler.ServeHTTP(w, r)
-		return errors.New("Unauthorized")
-	} else if authErr != nil {
-		a.myLog(authErr)
-		a.NullifyTokenCookies(&w, r)
-		a.errorHandler.ServeHTTP(w, r)
-		return errors.New("Internal Server Error")
-	}
+	var authTokenValue string
+	var refreshTokenValue string
 
-	RefreshCookie, refreshErr := r.Cookie("RefreshToken")
-	if refreshErr == http.ErrNoCookie {
-		a.myLog("Unauthorized attempt! No refresh cookie")
-		a.NullifyTokenCookies(&w, r)
-		a.unauthorizedHandler.ServeHTTP(w, r)
-		return errors.New("Unauthorized")
-	} else if refreshErr != nil {
-		a.myLog(refreshErr)
-		a.NullifyTokenCookies(&w, r)
-		a.errorHandler.ServeHTTP(w, r)
-		return errors.New("Internal Server Error")
+	// read cookies
+	if a.options.BearerTokens {
+		// tokens are not in cookies
+		if r.Header.Get("Content-Type") == "application/json" {
+			content, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				a.myLog("Err decoding bearer tokens json \n" + err.Error())
+				a.errorHandler.ServeHTTP(w, r)
+				return errors.New("Internal Server Error")
+			}
+			r.Body = ioutil.NopCloser(bytes.NewReader(content))
+
+			var bearerTokens bearerTokensStruct
+			err = json.Unmarshal(content, &bearerTokens)
+			if err != nil {
+				a.myLog("Err decoding bearer tokens json \n" + err.Error())
+				a.errorHandler.ServeHTTP(w, r)
+				return errors.New("Internal Server Error")
+			}
+			authTokenValue = bearerTokens.Auth_Token
+			refreshTokenValue = bearerTokens.Refresh_Token
+		} else {
+			r.ParseForm()
+			authTokenValue = strings.Join(r.Form["Auth_Token"], "")
+			refreshTokenValue = strings.Join(r.Form["Refresh_Token"], "")
+		}
+	} else {
+		AuthCookie, authErr := r.Cookie("AuthToken")
+		if authErr == http.ErrNoCookie {
+			a.myLog("Unauthorized attempt! No auth cookie")
+			a.NullifyTokens(&w, r)
+			a.unauthorizedHandler.ServeHTTP(w, r)
+			return errors.New("Unauthorized")
+		} else if authErr != nil {
+			a.myLog(authErr)
+			a.NullifyTokens(&w, r)
+			a.errorHandler.ServeHTTP(w, r)
+			return errors.New("Internal Server Error")
+		}
+		authTokenValue = AuthCookie.Value
+
+		RefreshCookie, refreshErr := r.Cookie("RefreshToken")
+		if refreshErr == http.ErrNoCookie {
+			a.myLog("Unauthorized attempt! No refresh cookie")
+			a.NullifyTokens(&w, r)
+			a.unauthorizedHandler.ServeHTTP(w, r)
+			return errors.New("Unauthorized")
+		} else if refreshErr != nil {
+			a.myLog(refreshErr)
+			a.NullifyTokens(&w, r)
+			a.errorHandler.ServeHTTP(w, r)
+			return errors.New("Internal Server Error")
+		}
+		refreshTokenValue = RefreshCookie.Value
 	}
 
 	// grab the csrf token
 	requestCsrfToken := grabCsrfFromReq(r)
 
 	// check the jwt's for validity
-	authTokenString, refreshTokenString, csrfSecret, err := a.checkAndRefreshTokens(AuthCookie.Value, RefreshCookie.Value, requestCsrfToken)
+	authTokenString, refreshTokenString, csrfSecret, err := a.checkAndRefreshTokens(authTokenValue, refreshTokenValue, requestCsrfToken)
 	if err != nil {
 		if err.Error() == "Unauthorized" {
 			a.myLog("Unauthorized attempt! JWT's not valid!")
@@ -284,7 +326,7 @@ func (a *Auth) Process(w http.ResponseWriter, r *http.Request) error {
 
 	// if we've made it this far, everything is valid!
 	// And tokens have been refreshed if need-be
-	setAuthAndRefreshCookies(&w, authTokenString, refreshTokenString)
+	a.setAuthAndRefreshTokens(&w, authTokenString, refreshTokenString)
 	w.Header().Set("X-CSRF-Token", csrfSecret)
 	w.Header().Set("Auth-Expiry", strconv.FormatInt(time.Now().Add(a.options.AuthTokenValidTime).Unix(), 10))
 	w.Header().Set("Refresh-Expiry", strconv.FormatInt(time.Now().Add(a.options.RefreshTokenValidTime).Unix(), 10))
@@ -292,38 +334,68 @@ func (a *Auth) Process(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (a *Auth) NullifyTokenCookies(w *http.ResponseWriter, r *http.Request) {
-	authCookie := http.Cookie{
-		Name:     "AuthToken",
-		Value:    "",
-		Expires:  time.Now().Add(-1000 * time.Hour),
-		HttpOnly: true,
-		Secure:   true,
-	}
+// note @adam-hanna: this should return an error!
+func (a *Auth) NullifyTokens(w *http.ResponseWriter, r *http.Request) {
+	var refreshTokenValue string
 
-	http.SetCookie(*w, &authCookie)
+	if a.options.BearerTokens {
+		// tokens are not in cookies
+		if r.Header.Get("Content-Type") == "application/json" {
+			content, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				a.myLog("Err decoding bearer tokens json \n" + err.Error())
+				a.errorHandler.ServeHTTP(*w, r)
+				return
+			}
+			r.Body = ioutil.NopCloser(bytes.NewReader(content))
 
-	refreshCookie := http.Cookie{
-		Name:     "RefreshToken",
-		Value:    "",
-		Expires:  time.Now().Add(-1000 * time.Hour),
-		HttpOnly: true,
-		Secure:   true,
-	}
-
-	http.SetCookie(*w, &refreshCookie)
-
-	// if present, revoke the refresh cookie from our db
-	RefreshCookie, refreshErr := r.Cookie("RefreshToken")
-	if refreshErr == http.ErrNoCookie {
-		// do nothing, there is no refresh cookie present
-		return
-	} else if refreshErr != nil {
-		a.myLog(refreshErr)
-		http.Error(*w, http.StatusText(500), 500)
+			var bearerTokens bearerTokensStruct
+			err = json.Unmarshal(content, &bearerTokens)
+			if err != nil {
+				a.myLog("Err decoding bearer tokens json \n" + err.Error())
+				a.errorHandler.ServeHTTP(*w, r)
+				return
+			}
+			refreshTokenValue = bearerTokens.Refresh_Token
+		} else {
+			r.ParseForm()
+			refreshTokenValue = strings.Join(r.Form["refresh_token"], "")
+		}
 	} else {
-		a.revokeRefreshToken(RefreshCookie.Value)
+		authCookie := http.Cookie{
+			Name:     "AuthToken",
+			Value:    "",
+			Expires:  time.Now().Add(-1000 * time.Hour),
+			HttpOnly: true,
+			Secure:   !a.options.IsDevEnv,
+		}
+
+		http.SetCookie(*w, &authCookie)
+
+		refreshCookie := http.Cookie{
+			Name:     "RefreshToken",
+			Value:    "",
+			Expires:  time.Now().Add(-1000 * time.Hour),
+			HttpOnly: true,
+			Secure:   !a.options.IsDevEnv,
+		}
+
+		http.SetCookie(*w, &refreshCookie)
+
+		// if present, revoke the refresh cookie from our db
+		RefreshCookie, refreshErr := r.Cookie("RefreshToken")
+		if refreshErr == http.ErrNoCookie {
+			// do nothing, there is no refresh cookie present
+			return
+		} else if refreshErr != nil {
+			a.myLog(refreshErr)
+			a.errorHandler.ServeHTTP(*w, r)
+			return
+		}
+		refreshTokenValue = RefreshCookie.Value
 	}
+
+	a.revokeRefreshToken(refreshTokenValue)
 
 	setHeader(*w, "X-CSRF-Token", "")
 	setHeader(*w, "Auth-Expiry", strconv.FormatInt(time.Now().Add(-1000*time.Hour).Unix(), 10))
@@ -332,32 +404,48 @@ func (a *Auth) NullifyTokenCookies(w *http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func setAuthAndRefreshCookies(w *http.ResponseWriter, authTokenString string, refreshTokenString string) {
-	authCookie := http.Cookie{
-		Name:     "AuthToken",
-		Value:    authTokenString,
-		HttpOnly: true,
+func (a *Auth) setAuthAndRefreshTokens(w *http.ResponseWriter, authTokenString string, refreshTokenString string) {
+	if a.options.BearerTokens {
+		// tokens are not in cookies
+		setHeader(*w, "Auth_Token", authTokenString)
+		setHeader(*w, "Refresh_Token", refreshTokenString)
+	} else {
+		// tokens are in cookies
+		authCookie := http.Cookie{
+			Name:     "AuthToken",
+			Value:    authTokenString,
+			Expires:  time.Now().Add(a.options.AuthTokenValidTime),
+			HttpOnly: true,
+			Secure:   !a.options.IsDevEnv,
+		}
+		http.SetCookie(*w, &authCookie)
+
+		refreshCookie := http.Cookie{
+			Name:     "RefreshToken",
+			Value:    refreshTokenString,
+			Expires:  time.Now().Add(a.options.RefreshTokenValidTime),
+			HttpOnly: true,
+			Secure:   !a.options.IsDevEnv,
+		}
+		http.SetCookie(*w, &refreshCookie)
 	}
-
-	http.SetCookie(*w, &authCookie)
-
-	refreshCookie := http.Cookie{
-		Name:     "RefreshToken",
-		Value:    refreshTokenString,
-		HttpOnly: true,
-	}
-
-	http.SetCookie(*w, &refreshCookie)
 }
 
 func grabCsrfFromReq(r *http.Request) string {
-	csrfFromFrom := r.FormValue("X-CSRF-Token")
+	csrfString := r.FormValue("X-CSRF-Token")
 
-	if csrfFromFrom != "" {
-		return csrfFromFrom
-	} else {
-		return r.Header.Get("X-CSRF-Token")
+	if csrfString != "" {
+		return csrfString
 	}
+
+	csrfString = r.Header.Get("X-CSRF-Token")
+	if csrfString != "" {
+		return csrfString
+	}
+
+	auth := r.Header.Get("Authorization")
+	csrfString = strings.Replace(auth, "Basic", "", 1)
+	return strings.Replace(csrfString, " ", "", -1)
 }
 
 // and also modify create refresh and auth token functions!
@@ -385,7 +473,7 @@ func (a *Auth) IssueNewTokens(w http.ResponseWriter, claims ClaimsType) error {
 			return err
 		}
 
-		setAuthAndRefreshCookies(&w, authTokenString, refreshTokenString)
+		a.setAuthAndRefreshTokens(&w, authTokenString, refreshTokenString)
 
 		w.Header().Set("X-CSRF-Token", csrfSecret)
 		w.Header().Set("Auth-Expiry", strconv.FormatInt(time.Now().Add(a.options.AuthTokenValidTime).Unix(), 10))
@@ -610,21 +698,45 @@ func (a *Auth) updateRefreshTokenCsrf(oldRefreshTokenString string, newCsrfStrin
 }
 
 func (a *Auth) GrabTokenClaims(w http.ResponseWriter, r *http.Request) (ClaimsType, error) {
+	var authTokenValue string
+
 	// read cookies
-	AuthCookie, authErr := r.Cookie("AuthToken")
-	if authErr == http.ErrNoCookie {
-		a.myLog("Unauthorized attempt! No auth cookie")
-		a.NullifyTokenCookies(&w, r)
-		a.unauthorizedHandler.ServeHTTP(w, r)
-		return ClaimsType{}, errors.New("Unauthorized")
-	} else if authErr != nil {
-		a.myLog(authErr)
-		a.NullifyTokenCookies(&w, r)
-		a.errorHandler.ServeHTTP(w, r)
-		return ClaimsType{}, errors.New("Unauthorized")
+	if a.options.BearerTokens {
+		// tokens are not in cookies
+		if r.Header.Get("Content-Type") == "application/json" {
+			content, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				a.myLog("Err decoding bearer tokens json \n" + err.Error())
+				return ClaimsType{}, errors.New("Internal Server Error")
+			}
+			r.Body = ioutil.NopCloser(bytes.NewReader(content))
+
+			var bearerTokens bearerTokensStruct
+			err = json.Unmarshal(content, &bearerTokens)
+			if err != nil {
+				a.myLog("Err decoding bearer tokens json \n" + err.Error())
+				return ClaimsType{}, errors.New("Internal Server Error")
+			}
+			authTokenValue = bearerTokens.Auth_Token
+		} else {
+			r.ParseForm()
+			authTokenValue = strings.Join(r.Form["Auth_Token"], "")
+		}
+	} else {
+		AuthCookie, authErr := r.Cookie("AuthToken")
+		if authErr == http.ErrNoCookie {
+			a.myLog("Unauthorized attempt! No auth cookie")
+			a.NullifyTokens(&w, r)
+			return ClaimsType{}, errors.New("Unauthorized")
+		} else if authErr != nil {
+			a.myLog(authErr)
+			a.NullifyTokens(&w, r)
+			return ClaimsType{}, errors.New("Unauthorized")
+		}
+		authTokenValue = AuthCookie.Value
 	}
 
-	token, _ := jwtGo.ParseWithClaims(AuthCookie.Value, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
+	token, _ := jwtGo.ParseWithClaims(authTokenValue, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
 		return ClaimsType{}, errors.New("Error processing token string claims")
 	})
 	tokenClaims, ok := token.Claims.(*ClaimsType)

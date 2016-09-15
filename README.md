@@ -32,6 +32,7 @@ func main() {
     RefreshTokenValidTime: 72 * time.Hour,
     AuthTokenValidTime:    15 * time.Minute,
     Debug:                 false,
+    IsDevEnv:              true,
   })
   if authErr != nil {
     log.Println("Error initializing the JWT's!")
@@ -56,7 +57,7 @@ It is important to understand the objective of this auth architecture. It certai
 3. User sessions
 4. XSS protection
 5. CSRF protection
-6. Web (but could be easily modified for use in mobile / other. i.e. for native mobile don't use cookies but rather the proper, secure storage methods for your platform)
+6. Web and/or mobile
 
 ## Basics
 The design of this auth system is based around the three major components, listed below.
@@ -66,17 +67,26 @@ The design of this auth system is based around the three major components, liste
 3. CSRF secret string
 
 ### 1. Short-lived (minutes) JWT Auth Token
-The short-lived jwt auth token allows the user to make stateless requests to protected api endpoints and lives in an http only cookie on the client. It has an expiration time of 15 minutes by default and will be refreshed by the longer-lived refresh token. 
+The short-lived jwt auth token allows the user to make stateless requests to protected api endpoints. It has an expiration time of 15 minutes by default and will be refreshed by the longer-lived refresh token.
 
 ### 2. Longer-lived (hours/days) JWT Refresh Token
-This longer-lived token will be used to update the auth tokens. These tokens will also live in http only cookies on the client. These tokens have a 72 hour expiration time by default which will be updated each time an auth token is refreshed.
+This longer-lived token will be used to update the auth tokens. These tokens have a 72 hour expiration time by default which will be updated each time an auth token is refreshed.
 
 These refresh tokens contain an id which can be revoked by an authorized client.
 
 ### 3. CSRF Secret String
 A CSRF secret string will be provided to each client and will be identical the CSRF secret in the auth and refresh tokens and will change each time an auth token is refreshed. These secrets will live in an "X-CSRF-Token" response header. These secrets will be sent along with the auth and refresh tokens on each api request. 
 
-When request are made to protected endpoint, these CSRF secrets need to be sent to the server either as a hidden form value with a name of "X-CSRF-Token" or in the request header with the key of "X-CSRF-Token". This secret will be checked against the secret provided in the auth token in order to prevent CSRF attacks.
+When request are made to protected endpoint, this CSRF secret needs to be sent to the server either as a hidden form value with a name of "X-CSRF-Token", in the request header with the key of "X-CSRF-Token", or in the "Authorization" request header with a value of "Basic " + token. This secret will be checked against the secret provided in the auth token in order to prevent CSRF attacks.
+
+## Cookies or Bearer Tokens?
+This API is setup to either use cookies (default) or bearer tokens. To use bearer tokens, set the BearerTokens option equal to true in the config settings.
+
+When using bearer tokens, you'll need to include the auth and refresh jwt's (along with your csrf secret) in each request. You can either include them as a form value or as data in the body of the request if Content-Type is application/json. The keys should be "Auth_Token" and "Refresh_Token", respectively. See the bearerTokens example for sample code of both.
+
+Ideally, if using bearer tokens, they should be stored in a location that cannot be accessed with javascript. You want to be able to separate your csrf secret from your jwt's. If using web, I suggest using cookies. If using mobile, store these in a secure manner!
+
+If you are using cookies, the auth and refresh jwt's will automatically be included. You only need to include the csrf token.
 
 ## API
 
@@ -93,10 +103,11 @@ type Options struct {
   PublicKeyLocation     string // only for RSA and ECDSA signing methods
   HMACKey               []byte // only for HMAC-SHA signing method
   VerifyOnlyServer      bool // false = server can verify and issue tokens (default); true = server can only verify tokens
+  BearerTokens          bool // false = server uses cookies to transport jwts (default); true = server uses bearer tokens
   RefreshTokenValidTime time.Duration
   AuthTokenValidTime    time.Duration
-  Debug                 bool
-  TokenClaims           ClaimsType
+  Debug                 bool // true = more logs are shown
+  IsDevEnv:             bool // true = in development mode; this sets http cookies (if used) to insecure; false = production mode; this sets http cookies (if used) to secure
 }
 ~~~
 
@@ -122,6 +133,7 @@ authErr := jwt.New(&restrictedRoute, jwt.Options{
   RefreshTokenValidTime: 72 * time.Hour,
   AuthTokenValidTime:    15 * time.Minute,
   Debug:                 false,
+  IsDevEnv:              true,
 })
 if authErr != nil {
   log.Println("Error initializing the JWT's!")
@@ -201,7 +213,7 @@ log.Println(claims)
 ### Nullify auth and refresh tokens (for instance, when a user logs out)
 ~~~ go
 // in a handler func
-restrictedRoute.NullifyTokenCookies(&w, r)
+restrictedRoute.NullifyTokens(&w, r)
 http.Redirect(w, r, "/login", 302)
 ~~~
 
@@ -294,6 +306,7 @@ func main() {
     RefreshTokenValidTime: 72 * time.Hour,
     AuthTokenValidTime:    15 * time.Minute,
     Debug:                 false,
+    IsDevEnv:              true,
   })
   if authErr != nil {
     log.Println("Error initializing the JWT's!")
@@ -334,6 +347,7 @@ func main() {
     RefreshTokenValidTime: 72 * time.Hour,
     AuthTokenValidTime:    15 * time.Minute,
     Debug:                 false,
+    IsDevEnv:              true,
   })
   if authErr != nil {
     log.Println("Error initializing the JWT's!")
@@ -387,6 +401,7 @@ func main() {
     RefreshTokenValidTime: 72 * time.Hour,
     AuthTokenValidTime:    15 * time.Minute,
     Debug:                 false,
+    IsDevEnv:              true,
   })
   if authErr != nil {
     log.Println("Error initializing the JWT's!")
@@ -423,6 +438,7 @@ func main() {
     RefreshTokenValidTime: 72 * time.Hour,
     AuthTokenValidTime:    15 * time.Minute,
     Debug:                 false,
+    IsDevEnv:              true,
   })
   if authErr != nil {
     log.Println("Error initializing the JWT's!")
@@ -479,6 +495,7 @@ func main() {
     RefreshTokenValidTime: 72 * time.Hour,
     AuthTokenValidTime:    15 * time.Minute,
     Debug:                 false,
+    IsDevEnv:              true,
   })
   if authErr != nil {
     log.Println("Error initializing the JWT's!")

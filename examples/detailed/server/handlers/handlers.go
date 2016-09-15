@@ -22,6 +22,7 @@ func InitHandlers() error {
 		RefreshTokenValidTime: 72 * time.Hour,
 		AuthTokenValidTime:    15 * time.Minute,
 		Debug:                 true,
+		IsDevEnv:              true,
 	})
 	if newRouteError != nil {
 		return newRouteError
@@ -164,7 +165,7 @@ var registerHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 
 var logoutHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	// remove this user's ability to make requests
-	restrictedRoute.NullifyTokenCookies(&w, r)
+	restrictedRoute.NullifyTokens(&w, r)
 	// use 302 to force browser to do GET request
 	http.Redirect(w, r, "/", 302)
 })
@@ -178,7 +179,7 @@ var deleteUserHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Req
 	} else {
 		db.DeleteUser(claims.StandardClaims.Subject)
 		// remove this user's ability to make requests
-		restrictedRoute.NullifyTokenCookies(&w, r)
+		restrictedRoute.NullifyTokens(&w, r)
 		// use 302 to force browser to do GET request
 		http.Redirect(w, r, "/register", 302)
 	}

@@ -63,7 +63,7 @@ var loginHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 var logoutHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		restrictedRoute.NullifyTokenCookies(&w, r)
+		restrictedRoute.NullifyTokens(&w, r)
 		http.Redirect(w, r, "/login", 302)
 
 	default:
@@ -79,6 +79,7 @@ func main() {
 		RefreshTokenValidTime: 72 * time.Hour,
 		AuthTokenValidTime:    15 * time.Minute,
 		Debug:                 true,
+		IsDevEnv:              true,
 	})
 	if authErr != nil {
 		log.Println("Error initializing the JWT's!")
