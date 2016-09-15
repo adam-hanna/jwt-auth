@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/adam-hanna/jwt-auth/jwt"
+
 	"log"
 	"net/http"
 	"time"

@@ -29,6 +29,7 @@ type Options struct {
 	PrivateKeyLocation    string
 	PublicKeyLocation     string
 	HMACKey               []byte
+	VerifyOnlyServer      bool
 	RefreshTokenValidTime time.Duration
 	AuthTokenValidTime    time.Duration
 	Debug                 bool
@@ -53,10 +54,12 @@ type TokenIdChecker func(tokenId string) bool
 
 func defaultErrorHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Internal Server Error", 500)
+	return
 }
 
 func defaultUnauthorizedHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Unauthorized", 401)
+	return
 }
 
 // Auth is a middleware that provides jwt based authentication.
@@ -100,24 +103,28 @@ func New(auth *Auth, options ...Options) error {
 		if len(o.HMACKey) == 0 {
 			return errors.New("When using an HMAC-SHA signing method, please provide a HMACKey")
 		}
-		signKey = o.HMACKey
+		if !o.VerifyOnlyServer {
+			signKey = o.HMACKey
+		}
 		verifyKey = o.HMACKey
 
 	} else if o.SigningMethodString == "RS256" || o.SigningMethodString == "RS384" || o.SigningMethodString == "RS512" {
 		// check to make sure the provided options are valid
-		if o.PrivateKeyLocation == "" || o.PublicKeyLocation == "" {
+		if (o.PrivateKeyLocation == "" && !o.VerifyOnlyServer) || o.PublicKeyLocation == "" {
 			return errors.New("Private and public key locations are required!")
 		}
 
 		// read the key files
-		signBytes, err := ioutil.ReadFile(o.PrivateKeyLocation)
-		if err != nil {
-			return err
-		}
+		if !o.VerifyOnlyServer {
+			signBytes, err := ioutil.ReadFile(o.PrivateKeyLocation)
+			if err != nil {
+				return err
+			}
 
-		signKey, err = jwtGo.ParseRSAPrivateKeyFromPEM(signBytes)
-		if err != nil {
-			return err
+			signKey, err = jwtGo.ParseRSAPrivateKeyFromPEM(signBytes)
+			if err != nil {
+				return err
+			}
 		}
 
 		verifyBytes, err := ioutil.ReadFile(o.PublicKeyLocation)
@@ -132,19 +139,21 @@ func New(auth *Auth, options ...Options) error {
 
 	} else if o.SigningMethodString == "ES256" || o.SigningMethodString == "ES384" || o.SigningMethodString == "ES512" {
 		// check to make sure the provided options are valid
-		if o.PrivateKeyLocation == "" || o.PublicKeyLocation == "" {
+		if (o.PrivateKeyLocation == "" && !o.VerifyOnlyServer) || o.PublicKeyLocation == "" {
 			return errors.New("Private and public key locations are required!")
 		}
 
 		// read the key files
-		signBytes, err := ioutil.ReadFile(o.PrivateKeyLocation)
-		if err != nil {
-			return err
-		}
+		if !o.VerifyOnlyServer {
+			signBytes, err := ioutil.ReadFile(o.PrivateKeyLocation)
+			if err != nil {
+				return err
+			}
 
-		signKey, err = jwtGo.ParseECPrivateKeyFromPEM(signBytes)
-		if err != nil {
-			return err
+			signKey, err = jwtGo.ParseECPrivateKeyFromPEM(signBytes)
+			if err != nil {
+				return err
+			}
 		}
 
 		verifyBytes, err := ioutil.ReadFile(o.PublicKeyLocation)
@@ -189,7 +198,7 @@ func (a *Auth) SetCheckTokenIdFunction(checker TokenIdChecker) {
 // Handler implements the http.HandlerFunc for integration with the standard net/http lib.
 func (a *Auth) Handler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Let secure process the request. If it returns an error,
+		// Process the request. If it returns an error,
 		// that indicates the request should not continue.
 		err := a.Process(w, r)
 
@@ -258,6 +267,9 @@ func (a *Auth) Process(w http.ResponseWriter, r *http.Request) error {
 
 			a.unauthorizedHandler.ServeHTTP(w, r)
 			return errors.New("Unauthorized")
+		} else if err.Error() == "Server is not authorized to issue new tokens" {
+			a.unauthorizedHandler.ServeHTTP(w, r)
+			return errors.New("Unauthorized")
 		} else {
 			// @adam-hanna: do we 401 or 500, here?
 			// it could be 401 bc the token they provided was messed up
@@ -286,6 +298,7 @@ func (a *Auth) NullifyTokenCookies(w *http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Expires:  time.Now().Add(-1000 * time.Hour),
 		HttpOnly: true,
+		Secure:   true,
 	}
 
 	http.SetCookie(*w, &authCookie)
@@ -295,6 +308,7 @@ func (a *Auth) NullifyTokenCookies(w *http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Expires:  time.Now().Add(-1000 * time.Hour),
 		HttpOnly: true,
+		Secure:   true,
 	}
 
 	http.SetCookie(*w, &refreshCookie)
@@ -347,29 +361,38 @@ func grabCsrfFromReq(r *http.Request) string {
 }
 
 // and also modify create refresh and auth token functions!
-func (a *Auth) IssueNewTokens(w http.ResponseWriter, claims ClaimsType) (err error) {
-	// generate the csrf secret
-	csrfSecret, err := randomstrings.GenerateRandomString(32)
-	if err != nil {
-		return
+func (a *Auth) IssueNewTokens(w http.ResponseWriter, claims ClaimsType) error {
+	if a.options.VerifyOnlyServer {
+		a.myLog("Server is not authorized to issue new tokens")
+		return errors.New("Server is not authorized to issue new tokens")
+
+	} else {
+		// generate the csrf secret
+		csrfSecret, err := randomstrings.GenerateRandomString(32)
+		if err != nil {
+			return err
+		}
+
+		// generate the refresh token
+		refreshTokenString, err := a.createRefreshTokenString(claims, csrfSecret)
+		if err != nil {
+			return err
+		}
+
+		// generate the auth token
+		authTokenString, err := a.createAuthTokenString(claims, csrfSecret)
+		if err != nil {
+			return err
+		}
+
+		setAuthAndRefreshCookies(&w, authTokenString, refreshTokenString)
+
+		w.Header().Set("X-CSRF-Token", csrfSecret)
+		w.Header().Set("Auth-Expiry", strconv.FormatInt(time.Now().Add(a.options.AuthTokenValidTime).Unix(), 10))
+		w.Header().Set("Refresh-Expiry", strconv.FormatInt(time.Now().Add(a.options.RefreshTokenValidTime).Unix(), 10))
+
+		return nil
 	}
-
-	// generate the refresh token
-	refreshTokenString, err := a.createRefreshTokenString(claims, csrfSecret)
-
-	// generate the auth token
-	authTokenString, err := a.createAuthTokenString(claims, csrfSecret)
-	if err != nil {
-		return
-	}
-
-	setAuthAndRefreshCookies(&w, authTokenString, refreshTokenString)
-
-	w.Header().Set("X-CSRF-Token", csrfSecret)
-	w.Header().Set("Auth-Expiry", strconv.FormatInt(time.Now().Add(a.options.AuthTokenValidTime).Unix(), 10))
-	w.Header().Set("Refresh-Expiry", strconv.FormatInt(time.Now().Add(a.options.RefreshTokenValidTime).Unix(), 10))
-	// don't need to check for err bc we're returning everything anyway
-	return
 }
 
 // @adam-hanna: check if refreshToken["sub"] == authToken["sub"]?
@@ -412,29 +435,39 @@ func (a *Auth) checkAndRefreshTokens(oldAuthTokenString string, oldRefreshTokenS
 		// update the exp of refresh token string, but don't save to the db
 		// we don't need to check if our refresh token is valid here
 		// because we aren't renewing the auth token, the auth token is already valid
-		newRefreshTokenString, err = a.updateRefreshTokenExp(oldRefreshTokenString)
+		if !a.options.VerifyOnlyServer {
+			newRefreshTokenString, err = a.updateRefreshTokenExp(oldRefreshTokenString)
+		} else {
+			newRefreshTokenString = oldRefreshTokenString
+		}
 		newAuthTokenString = oldAuthTokenString
 		return
 	} else if ve, ok := err.(*jwtGo.ValidationError); ok {
 		a.myLog("Auth token is not valid")
 		if ve.Errors&(jwtGo.ValidationErrorExpired) != 0 {
-			a.myLog("Auth token is expired")
-			// auth token is expired
-			// fyi - refresh token is checked in the update auth func
-			newAuthTokenString, newCsrfSecret, err = a.updateAuthTokenString(oldRefreshTokenString, oldAuthTokenString)
-			if err != nil {
+			if a.options.VerifyOnlyServer {
+				a.myLog("Server is not authorized to issue new tokens")
+				err = errors.New("Server is not authorized to issue new tokens")
+				return
+			} else {
+				a.myLog("Auth token is expired")
+				// auth token is expired
+				// fyi - refresh token is checked in the update auth func
+				newAuthTokenString, newCsrfSecret, err = a.updateAuthTokenString(oldRefreshTokenString, oldAuthTokenString)
+				if err != nil {
+					return
+				}
+
+				// update the exp of refresh token string
+				newRefreshTokenString, err = a.updateRefreshTokenExp(oldRefreshTokenString)
+				if err != nil {
+					return
+				}
+
+				// update the csrf string of the refresh token
+				newRefreshTokenString, err = a.updateRefreshTokenCsrf(newRefreshTokenString, newCsrfSecret)
 				return
 			}
-
-			// update the exp of refresh token string
-			newRefreshTokenString, err = a.updateRefreshTokenExp(oldRefreshTokenString)
-			if err != nil {
-				return
-			}
-
-			// update the csrf string of the refresh token
-			newRefreshTokenString, err = a.updateRefreshTokenCsrf(newRefreshTokenString, newCsrfSecret)
-			return
 		} else {
 			a.myLog("Error in auth token")
 			err = errors.New("Error in auth token")

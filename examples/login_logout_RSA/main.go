@@ -3,6 +3,7 @@ package main
 import (
 	"./templates"
 	"github.com/adam-hanna/jwt-auth/jwt"
+
 	"log"
 	"net/http"
 	"strings"
@@ -13,6 +14,7 @@ var restrictedRoute jwt.Auth
 
 var myUnauthorizedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "I Pitty the fool who is Unauthorized", 401)
+	return
 })
 
 var restrictedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -22,6 +24,7 @@ var restrictedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Req
 
 	if err != nil {
 		http.Error(w, "Internal Server Error", 500)
+		return
 	} else {
 		templates.RenderTemplate(w, "restricted", &templates.RestrictedPage{csrfSecret, claims.CustomClaims["Role"].(string)})
 	}
@@ -43,6 +46,7 @@ var loginHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 			err := restrictedRoute.IssueNewTokens(w, claims)
 			if err != nil {
 				http.Error(w, "Internal Server Error", 500)
+				return
 			}
 
 			w.WriteHeader(http.StatusOK)
