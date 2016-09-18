@@ -3,6 +3,8 @@
 
 package jwt
 
+/*
+
 import (
 	"bytes"
 	"encoding/json"
@@ -756,3 +758,4 @@ func (a *Auth) myLog(stoofs interface{}) {
 func setHeader(w http.ResponseWriter, header string, value string) {
 	w.Header().Set(header, value)
 }
+*/
