@@ -146,7 +146,7 @@ if authErr != nil {
 // outside of main()
 var restrictedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
   csrfSecret := w.Header().Get("X-CSRF-Token")
-  claims, err := restrictedRoute.GrabTokenClaims(w, r)
+  claims, err := restrictedRoute.GrabTokenClaims(r)
   log.Println(claims)
   
   if err != nil {
@@ -206,7 +206,7 @@ authExpirationTime := w.Header().Get("Auth-Expiry")
 ### Get claims from a request
 ~~~ go
 // in a handler func
-claims, err := restrictedRoute.GrabTokenClaims(w, r)
+claims, err := restrictedRoute.GrabTokenClaims(r)
 log.Println(claims)
 ~~~
 

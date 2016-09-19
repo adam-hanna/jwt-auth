@@ -18,7 +18,7 @@ var myUnauthorizedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http
 
 var restrictedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	csrfSecret := w.Header().Get("X-CSRF-Token")
-	claims, err := restrictedRoute.GrabTokenClaims(w, r)
+	claims, err := restrictedRoute.GrabTokenClaims(r)
 	log.Println(claims)
 
 	if err != nil {

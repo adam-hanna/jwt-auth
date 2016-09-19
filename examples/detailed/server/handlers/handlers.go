@@ -173,7 +173,7 @@ var logoutHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 var deleteUserHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	log.Println("Deleting user")
 
-	claims, claimsErr := restrictedRoute.GrabTokenClaims(w, r)
+	claims, claimsErr := restrictedRoute.GrabTokenClaims(r)
 	if claimsErr != nil {
 		http.Error(w, http.StatusText(500), 500)
 	} else {

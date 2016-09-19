@@ -270,7 +270,7 @@ func (a *Auth) process(w http.ResponseWriter, r *http.Request) *jwtError {
 
 	// if we've made it this far, everything is valid!
 	// And tokens have been refreshed if need-be
-	err = a.setAuthAndRefreshTokens(&w, &c)
+	err = a.setCredentialsOnResponseWriter(&w, &c)
 	if err != nil {
 		return newJwtError(err, 500)
 	}
@@ -289,12 +289,12 @@ func (a *Auth) IssueNewTokens(w http.ResponseWriter, claims ClaimsType) error {
 
 	} else {
 		var c credentials
-		err := a.buildCredentialsFromScratch(&c, claims)
+		err := a.buildCredentialsFromScratch(&c, &claims)
 		if err != nil {
 			return errors.New(err.Error())
 		}
 
-		err = a.setAuthAndRefreshTokens(&w, &c)
+		err = a.setCredentialsOnResponseWriter(&w, &c)
 		if err != nil {
 			return errors.New(err.Error())
 		}
@@ -306,14 +306,13 @@ func (a *Auth) IssueNewTokens(w http.ResponseWriter, claims ClaimsType) error {
 	}
 }
 
-// note @adam-hanna: this should return an error!
 // note @adam-hanna: what if there are no credentials in the request?
 func (a *Auth) NullifyTokens(w *http.ResponseWriter, r *http.Request) error {
 	var c credentials
 	err := a.buildCredentialsFromRequest(r, &c)
 	if err != nil {
 		a.myLog("Err building credentials\n" + err.Error())
-		return err
+		return errors.New(err.Error())
 	}
 
 	if a.options.BearerTokens {
@@ -354,12 +353,12 @@ func (a *Auth) NullifyTokens(w *http.ResponseWriter, r *http.Request) error {
 }
 
 // note: we always grab from the authToken
-func (a *Auth) GrabTokenClaims(w http.ResponseWriter, r *http.Request) (ClaimsType, error) {
+func (a *Auth) GrabTokenClaims(r *http.Request) (ClaimsType, error) {
 	var c credentials
 	err := a.buildCredentialsFromRequest(r, &c)
 	if err != nil {
 		a.myLog("Err grabbing credentials \n" + err.Error())
-		return ClaimsType{}, err
+		return ClaimsType{}, errors.New(err.Error())
 	}
 
 	return *c.AuthToken.Claims.(*ClaimsType), nil

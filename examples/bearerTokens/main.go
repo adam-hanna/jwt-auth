@@ -25,7 +25,7 @@ var myUnauthorizedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http
 
 var refreshSecretHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	csrfSecret := w.Header().Get("X-CSRF-Token")
-	claims, err := restrictedRoute.GrabTokenClaims(w, r)
+	claims, err := restrictedRoute.GrabTokenClaims(r)
 	log.Println(csrfSecret, claims)
 
 	if err != nil {
@@ -101,7 +101,7 @@ func main() {
 		PrivateKeyLocation:    "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
 		PublicKeyLocation:     "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
 		RefreshTokenValidTime: 72 * time.Hour,
-		AuthTokenValidTime:    15 * time.Minute,
+		AuthTokenValidTime:    5 * time.Second,
 		Debug:                 true,
 		BearerTokens:          true,
 	})

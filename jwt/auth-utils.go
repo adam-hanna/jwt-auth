@@ -45,27 +45,19 @@ func (a *Auth) extractTokenStringsFromReq(r *http.Request) (string, string, *jwt
 	} else {
 		AuthCookie, authErr := r.Cookie("AuthToken")
 		if authErr == http.ErrNoCookie {
-			// a.myLog("Unauthorized attempt! No auth cookie")
-			// a.NullifyTokens(&w, r)
-			// a.unauthorizedHandler.ServeHTTP(w, r)
+			a.myLog("Unauthorized attempt! No auth cookie")
 			return "", "", newJwtError(errors.New("No auth cookie"), 401)
 		} else if authErr != nil {
 			// a.myLog(authErr)
-			// a.NullifyTokens(&w, r)
-			// a.errorHandler.ServeHTTP(w, r)
 			return "", "", newJwtError(errors.New("Internal Server Error"), 500)
 		}
 
 		RefreshCookie, refreshErr := r.Cookie("RefreshToken")
 		if refreshErr == http.ErrNoCookie {
-			// a.myLog("Unauthorized attempt! No refresh cookie")
-			// a.NullifyTokens(&w, r)
-			// a.unauthorizedHandler.ServeHTTP(w, r)
+			a.myLog("Unauthorized attempt! No refresh cookie")
 			return "", "", newJwtError(errors.New("No refresh cookie"), 401)
 		} else if refreshErr != nil {
 			a.myLog(refreshErr)
-			// a.NullifyTokens(&w, r)
-			// a.errorHandler.ServeHTTP(w, r)
 			return "", "", newJwtError(errors.New("Internal Server Error"), 500)
 		}
 
@@ -95,12 +87,12 @@ func extractCsrfStringFromReq(r *http.Request) (string, *jwtError) {
 	}
 }
 
-func (a *Auth) setAuthAndRefreshTokens(w *http.ResponseWriter, c *credentials) *jwtError {
+func (a *Auth) setCredentialsOnResponseWriter(w *http.ResponseWriter, c *credentials) *jwtError {
 	authTokenString, err := c.AuthToken.SignedString(a.signKey)
 	if err != nil {
 		return newJwtError(err, 500)
 	}
-	refreshTokenString, err := c.AuthToken.SignedString(a.signKey)
+	refreshTokenString, err := c.RefreshToken.SignedString(a.signKey)
 	if err != nil {
 		return newJwtError(err, 500)
 	}
@@ -111,10 +103,11 @@ func (a *Auth) setAuthAndRefreshTokens(w *http.ResponseWriter, c *credentials) *
 		setHeader(*w, "Refresh_Token", refreshTokenString)
 	} else {
 		// tokens are in cookies
+		// note: don't use an "Expires" in auth cookies bc browsers won't send expired cookies?
 		authCookie := http.Cookie{
-			Name:     "AuthToken",
-			Value:    authTokenString,
-			Expires:  time.Now().Add(a.options.AuthTokenValidTime),
+			Name:  "AuthToken",
+			Value: authTokenString,
+			// Expires:  time.Now().Add(a.options.AuthTokenValidTime),
 			HttpOnly: true,
 			Secure:   !a.options.IsDevEnv,
 		}

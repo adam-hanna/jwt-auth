@@ -12,26 +12,31 @@ import (
 type credentials struct {
 	CsrfString string
 
-	AuthToken                   jwtToken
-	AuthTokenParseWithClaimsErr error
+	AuthToken         jwtToken
+	AuthTokenParseErr error
 
-	RefreshToken                   jwtToken
-	RefreshTokenParseWithClaimsErr error
+	RefreshToken         jwtToken
+	RefreshTokenParseErr error
 }
 
-func (a *Auth) buildCredentialsFromScratch(c *credentials, claims ClaimsType) *jwtError {
+func (a *Auth) buildCredentialsFromScratch(c *credentials, claims *ClaimsType) *jwtError {
 	newCsrfString, err := generateNewCsrfString()
 	if err != nil {
 		return newJwtError(err, 500)
 	}
 	c.CsrfString = newCsrfString
-	claims.Csrf = newCsrfString
 
-	claims.StandardClaims.ExpiresAt = time.Now().Add(a.options.AuthTokenValidTime).Unix()
-	c.AuthToken = *newWithClaims(jwtGo.GetSigningMethod(a.options.SigningMethodString), claims)
+	authClaims := *claims
+	authClaims.Csrf = newCsrfString
+	authClaims.StandardClaims.ExpiresAt = time.Now().Add(a.options.AuthTokenValidTime).Unix()
+	c.AuthToken = *newWithClaims(jwtGo.GetSigningMethod(a.options.SigningMethodString), authClaims)
+	c.AuthTokenParseErr = nil
 
-	claims.StandardClaims.ExpiresAt = time.Now().Add(a.options.RefreshTokenValidTime).Unix()
-	c.RefreshToken = *newWithClaims(jwtGo.GetSigningMethod(a.options.SigningMethodString), claims)
+	refreshClaimsClaims := *claims
+	refreshClaimsClaims.Csrf = newCsrfString
+	refreshClaimsClaims.StandardClaims.ExpiresAt = time.Now().Add(a.options.RefreshTokenValidTime).Unix()
+	c.RefreshToken = *newWithClaims(jwtGo.GetSigningMethod(a.options.SigningMethodString), refreshClaimsClaims)
+	c.RefreshTokenParseErr = nil
 
 	return nil
 }
@@ -63,11 +68,11 @@ func (a *Auth) buildCredentialsFromStrings(csrfString string, authTokenString st
 	//       Also, tokens that have expired will throw err?
 	tempAuthToken, tempAuthParseErr := a.buildTokenWithClaimsFromString(authTokenString)
 	c.AuthToken = *tempAuthToken
-	c.AuthTokenParseWithClaimsErr = tempAuthParseErr
+	c.AuthTokenParseErr = tempAuthParseErr
 
 	tempRefreshToken, tempRefreshParseErr := a.buildTokenWithClaimsFromString(refreshTokenString)
 	c.RefreshToken = *tempRefreshToken
-	c.RefreshTokenParseWithClaimsErr = tempRefreshParseErr
+	c.RefreshTokenParseErr = tempRefreshParseErr
 
 	return nil
 }
@@ -77,12 +82,13 @@ func validateCsrfStringAgainstCredentials(c *credentials) *jwtError {
 	if !ok {
 		return newJwtError(errors.New("Cannot read token claims"), 500)
 	}
-	refreshTokenClaims, ok := c.RefreshToken.Claims.(*ClaimsType)
-	if !ok {
-		return newJwtError(errors.New("Cannot read token claims"), 500)
-	}
-	if c.CsrfString != authTokenClaims.Csrf || c.CsrfString != refreshTokenClaims.Csrf {
-		return newJwtError(errors.New("CSRF token doesn't match value in jwts!"), 401)
+	// note @adam-hanna: check csrf in refresh token?
+	// refreshTokenClaims, ok := c.RefreshToken.Claims.(*ClaimsType)
+	// if !ok {
+	// 	return newJwtError(errors.New("Cannot read token claims"), 500)
+	// }
+	if c.CsrfString != authTokenClaims.Csrf {
+		return newJwtError(errors.New("CSRF token doesn't match value in jwts"), 401)
 	}
 
 	return nil
@@ -91,49 +97,6 @@ func validateCsrfStringAgainstCredentials(c *credentials) *jwtError {
 func generateNewCsrfString() (string, error) {
 	// note @adam-hanna: allow user's to set length?
 	return randomstrings.GenerateRandomString(32)
-}
-
-func (a *Auth) updateTokenExpiry(token *jwtToken, expiry time.Duration) *jwtError {
-	tokenClaims, ok := token.Claims.(*ClaimsType)
-	if !ok {
-		return newJwtError(errors.New("Cannot read token claims"), 500)
-	}
-
-	tokenClaims.StandardClaims.ExpiresAt = time.Now().Add(expiry).Unix()
-
-	// update the token
-	token = newWithClaims(jwtGo.GetSigningMethod(a.options.SigningMethodString), tokenClaims)
-
-	return nil
-}
-
-func (a *Auth) updateTokenCsrf(token *jwtToken, csrfString string) *jwtError {
-	tokenClaims, ok := token.Claims.(*ClaimsType)
-	if !ok {
-		return newJwtError(errors.New("Cannot read token claims"), 500)
-	}
-
-	tokenClaims.Csrf = csrfString
-
-	// update the token
-	token = newWithClaims(jwtGo.GetSigningMethod(a.options.SigningMethodString), tokenClaims)
-
-	return nil
-}
-
-func (a *Auth) updateTokenExpiryAndCsrf(token *jwtToken, expiry time.Duration, csrfString string) *jwtError {
-	tokenClaims, ok := token.Claims.(*ClaimsType)
-	if !ok {
-		return newJwtError(errors.New("Cannot read token claims"), 500)
-	}
-
-	tokenClaims.StandardClaims.ExpiresAt = time.Now().Add(expiry).Unix()
-	tokenClaims.Csrf = csrfString
-
-	// update the token
-	token = newWithClaims(jwtGo.GetSigningMethod(a.options.SigningMethodString), tokenClaims)
-
-	return nil
 }
 
 func (a *Auth) updateAuthTokenFromRefreshToken(c *credentials) *jwtError {
@@ -155,6 +118,8 @@ func (a *Auth) updateAuthTokenFromRefreshToken(c *credentials) *jwtError {
 				return newJwtError(err, 500)
 			}
 
+			c.CsrfString = newCsrfString
+
 			err = a.updateTokenExpiryAndCsrf(&c.AuthToken, a.options.AuthTokenValidTime, newCsrfString)
 			if err != nil {
 				return newJwtError(err, 500)
@@ -162,11 +127,11 @@ func (a *Auth) updateAuthTokenFromRefreshToken(c *credentials) *jwtError {
 
 			return a.updateTokenExpiryAndCsrf(&c.RefreshToken, a.options.RefreshTokenValidTime, newCsrfString)
 		} else {
-			a.myLog("Refresh token has expired!")
+			a.myLog("Refresh token has expired")
 			return newJwtError(errors.New("Refresh token has expired. Cannot refresh auth token."), 401)
 		}
 	} else {
-		a.myLog("Refresh token has been revoked!")
+		a.myLog("Refresh token has been revoked")
 		return newJwtError(errors.New("Refresh token has been revoked. Cannot update auth token"), 401)
 	}
 }
@@ -193,10 +158,17 @@ func (a *Auth) validateAndUpdateCredentials(c *credentials) *jwtError {
 				return newJwtError(err, 500)
 			}
 
+			c.CsrfString = newCsrfString
+
+			err = a.updateTokenCsrf(&c.AuthToken, newCsrfString)
+			if err != nil {
+				return newJwtError(err, 500)
+			}
+
 			return a.updateTokenExpiryAndCsrf(&c.RefreshToken, a.options.RefreshTokenValidTime, newCsrfString)
 		}
 		return nil
-	} else if ve, ok := c.RefreshTokenParseWithClaimsErr.(*jwtGo.ValidationError); ok {
+	} else if ve, ok := c.AuthTokenParseErr.(*jwtGo.ValidationError); ok {
 		a.myLog("Auth token is not valid")
 		if ve.Errors&(jwtGo.ValidationErrorExpired) != 0 {
 			a.myLog("Auth token is expired")
