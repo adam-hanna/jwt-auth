@@ -165,7 +165,11 @@ var registerHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 
 var logoutHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	// remove this user's ability to make requests
-	restrictedRoute.NullifyTokens(&w, r)
+	err := restrictedRoute.NullifyTokens(&w, r)
+	if err != nil {
+		http.Error(w, "Internal Server Error", 500)
+		return
+	}
 	// use 302 to force browser to do GET request
 	http.Redirect(w, r, "/", 302)
 })
@@ -179,7 +183,11 @@ var deleteUserHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Req
 	} else {
 		db.DeleteUser(claims.StandardClaims.Subject)
 		// remove this user's ability to make requests
-		restrictedRoute.NullifyTokens(&w, r)
+		err := restrictedRoute.NullifyTokens(&w, r)
+		if err != nil {
+			http.Error(w, "Internal Server Error", 500)
+			return
+		}
 		// use 302 to force browser to do GET request
 		http.Redirect(w, r, "/register", 302)
 	}

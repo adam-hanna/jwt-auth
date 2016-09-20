@@ -161,7 +161,7 @@ var issueClaimsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Re
 		r.ParseForm()
 
 		if strings.Join(r.Form["username"], "") == "testUser" && strings.Join(r.Form["password"], "") == "testPassword" {
-			log.Println("Successful login")
+			log.Println("Correct credentials")
 			claims := jwt.ClaimsType{}
 			claims.CustomClaims = make(map[string]interface{})
 			claims.CustomClaims["Role"] = "user"
@@ -172,6 +172,7 @@ var issueClaimsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Re
 				return
 			}
 
+			log.Println("Successful login")
 			w.WriteHeader(http.StatusOK)
 
 		} else {
@@ -220,7 +221,12 @@ var logoutHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	switch r.Method {
 	case "POST":
 		log.Println("In logout post")
-		restrictedRoute.NullifyTokens(&w, r)
+		err := restrictedRoute.NullifyTokens(&w, r)
+		if err != nil {
+			http.Error(w, "Internal Server Error", 500)
+			return
+		}
+
 		http.Redirect(w, r, "/login", 302)
 
 	default:

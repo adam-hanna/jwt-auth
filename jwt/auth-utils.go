@@ -88,11 +88,11 @@ func extractCsrfStringFromReq(r *http.Request) (string, *jwtError) {
 }
 
 func (a *Auth) setCredentialsOnResponseWriter(w *http.ResponseWriter, c *credentials) *jwtError {
-	authTokenString, err := c.AuthToken.SignedString(a.signKey)
+	authTokenString, err := c.AuthToken.Token.SignedString(a.signKey)
 	if err != nil {
 		return newJwtError(err, 500)
 	}
-	refreshTokenString, err := c.RefreshToken.SignedString(a.signKey)
+	refreshTokenString, err := c.RefreshToken.Token.SignedString(a.signKey)
 	if err != nil {
 		return newJwtError(err, 500)
 	}
@@ -124,6 +124,20 @@ func (a *Auth) setCredentialsOnResponseWriter(w *http.ResponseWriter, c *credent
 	}
 
 	return nil
+}
+
+func (a *Auth) buildCredentialsFromRequest(r *http.Request, c *credentials) *jwtError {
+	authTokenString, refreshTokenString, err := a.extractTokenStringsFromReq(r)
+	if err != nil {
+		return newJwtError(err, 500)
+	}
+
+	csrfString, err := extractCsrfStringFromReq(r)
+	if err != nil {
+		return newJwtError(err, 500)
+	}
+
+	return a.buildCredentialsFromStrings(csrfString, authTokenString, refreshTokenString, c)
 }
 
 func (a *Auth) myLog(stoofs interface{}) {

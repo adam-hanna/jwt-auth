@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -209,12 +210,13 @@ func (a *Auth) Handler(h http.Handler) http.Handler {
 		// Process the request. If it returns an error,
 		// that indicates the request should not continue.
 		jwtErr := a.process(w, r)
+		var j jwtError
 
 		// If there was an error, do not continue.
 		if jwtErr != nil {
 			a.myLog("Error processing jwts\n" + jwtErr.Error())
-			a.NullifyTokens(&w, r)
-			if jwtErr.Type/100 == 4 {
+			_ := a.NullifyTokens(&w, r)
+			if reflect.TypeOf(jwtErr) == reflect.TypeOf(&j) && jwtErr.Type/100 == 4 {
 				a.unauthorizedHandler.ServeHTTP(w, r)
 				return
 			} else {
@@ -230,14 +232,15 @@ func (a *Auth) Handler(h http.Handler) http.Handler {
 // HandlerFuncWithNext is a special implementation for Negroni, but could be used elsewhere.
 func (a *Auth) HandlerFuncWithNext(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	jwtErr := a.process(w, r)
+	var j jwtError
 
 	// If there was an error, do not call next.
 	if jwtErr == nil && next != nil {
 		next(w, r)
 	} else {
 		a.myLog("Error processing jwts\n" + jwtErr.Error())
-		a.NullifyTokens(&w, r)
-		if jwtErr.Type/100 == 4 {
+		_ := a.NullifyTokens(&w, r)
+		if reflect.TypeOf(jwtErr) == reflect.TypeOf(&j) && jwtErr.Type/100 == 4 {
 			a.unauthorizedHandler.ServeHTTP(w, r)
 		} else {
 			a.errorHandler.ServeHTTP(w, r)
@@ -261,7 +264,7 @@ func (a *Auth) process(w http.ResponseWriter, r *http.Request) *jwtError {
 	}
 
 	// check the credential's validity; updating expiry's if necessary and/or allowed
-	err = a.validateAndUpdateCredentials(&c)
+	err = c.validateAndUpdateCredentials()
 	if err != nil {
 		return newJwtError(err, 500)
 	}
@@ -270,13 +273,29 @@ func (a *Auth) process(w http.ResponseWriter, r *http.Request) *jwtError {
 
 	// if we've made it this far, everything is valid!
 	// And tokens have been refreshed if need-be
-	err = a.setCredentialsOnResponseWriter(&w, &c)
-	if err != nil {
-		return newJwtError(err, 500)
+	if !a.options.VerifyOnlyServer {
+		err = a.setCredentialsOnResponseWriter(&w, &c)
+		if err != nil {
+			return newJwtError(err, 500)
+		}
 	}
+
+	authTokenClaims, ok := c.AuthToken.Token.Claims.(*ClaimsType)
+	if !ok {
+		a.myLog("Cannot read auth token claims")
+		return newJwtError(errors.New("Cannot read token claims"), 500)
+	}
+	refreshTokenClaims, ok := c.RefreshToken.Token.Claims.(*ClaimsType)
+	if !ok {
+		a.myLog("Cannot read refresh token claims")
+		return newJwtError(errors.New("Cannot read token claims"), 500)
+	}
+
 	w.Header().Set("X-CSRF-Token", c.CsrfString)
-	w.Header().Set("Auth-Expiry", strconv.FormatInt(time.Now().Add(a.options.AuthTokenValidTime).Unix(), 10))
-	w.Header().Set("Refresh-Expiry", strconv.FormatInt(time.Now().Add(a.options.RefreshTokenValidTime).Unix(), 10))
+	// note @adam-hanna: this may not be correct when using a sep auth server?
+	//    							 bc it checks the request?
+	w.Header().Set("Auth-Expiry", strconv.FormatInt(authTokenClaims.StandardClaims.ExpiresAt, 10))
+	w.Header().Set("Refresh-Expiry", strconv.FormatInt(refreshTokenClaims.StandardClaims.ExpiresAt, 10))
 
 	return nil
 }
@@ -289,7 +308,7 @@ func (a *Auth) IssueNewTokens(w http.ResponseWriter, claims ClaimsType) error {
 
 	} else {
 		var c credentials
-		err := a.buildCredentialsFromScratch(&c, &claims)
+		err := a.buildCredentialsFromClaims(&c, &claims)
 		if err != nil {
 			return errors.New(err.Error())
 		}
@@ -298,9 +317,21 @@ func (a *Auth) IssueNewTokens(w http.ResponseWriter, claims ClaimsType) error {
 		if err != nil {
 			return errors.New(err.Error())
 		}
+
+		authTokenClaims, ok := c.AuthToken.Token.Claims.(ClaimsType)
+		if !ok {
+			a.myLog("Cannot read auth token claims")
+			return newJwtError(errors.New("Cannot read token claims"), 500)
+		}
+		refreshTokenClaims, ok := c.RefreshToken.Token.Claims.(ClaimsType)
+		if !ok {
+			a.myLog("Cannot read refresh token claims")
+			return newJwtError(errors.New("Cannot read token claims"), 500)
+		}
+
 		w.Header().Set("X-CSRF-Token", c.CsrfString)
-		w.Header().Set("Auth-Expiry", strconv.FormatInt(time.Now().Add(a.options.AuthTokenValidTime).Unix(), 10))
-		w.Header().Set("Refresh-Expiry", strconv.FormatInt(time.Now().Add(a.options.RefreshTokenValidTime).Unix(), 10))
+		w.Header().Set("Auth-Expiry", strconv.FormatInt(authTokenClaims.StandardClaims.ExpiresAt, 10))
+		w.Header().Set("Refresh-Expiry", strconv.FormatInt(refreshTokenClaims.StandardClaims.ExpiresAt, 10))
 
 		return nil
 	}
@@ -341,7 +372,7 @@ func (a *Auth) NullifyTokens(w *http.ResponseWriter, r *http.Request) error {
 		http.SetCookie(*w, &refreshCookie)
 	}
 
-	refreshTokenClaims := c.RefreshToken.Claims.(*ClaimsType)
+	refreshTokenClaims := c.RefreshToken.Token.Claims.(*ClaimsType)
 	a.revokeRefreshToken(refreshTokenClaims.StandardClaims.Id)
 
 	setHeader(*w, "X-CSRF-Token", "")
@@ -361,5 +392,5 @@ func (a *Auth) GrabTokenClaims(r *http.Request) (ClaimsType, error) {
 		return ClaimsType{}, errors.New(err.Error())
 	}
 
-	return *c.AuthToken.Claims.(*ClaimsType), nil
+	return *c.AuthToken.Token.Claims.(*ClaimsType), nil
 }

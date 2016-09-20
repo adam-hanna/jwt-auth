@@ -213,7 +213,12 @@ log.Println(claims)
 ### Nullify auth and refresh tokens (for instance, when a user logs out)
 ~~~ go
 // in a handler func
-restrictedRoute.NullifyTokens(&w, r)
+err = restrictedRoute.NullifyTokens(&w, r)
+if err != nil {
+  http.Error(w, "Internal Server Error", 500)
+  return
+}
+
 http.Redirect(w, r, "/login", 302)
 ~~~
 

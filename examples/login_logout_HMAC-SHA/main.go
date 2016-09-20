@@ -60,7 +60,12 @@ var loginHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 var logoutHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		restrictedRoute.NullifyTokens(&w, r)
+		err := restrictedRoute.NullifyTokens(&w, r)
+		if err != nil {
+			http.Error(w, "Internal Server Error", 500)
+			return
+		}
+
 		http.Redirect(w, r, "/login", 302)
 
 	default:

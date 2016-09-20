@@ -87,7 +87,12 @@ var loginHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 var logoutHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		restrictedRoute.NullifyTokens(&w, r)
+		err := restrictedRoute.NullifyTokens(&w, r)
+		if err != nil {
+			http.Error(w, "Internal Server Error", 500)
+			return
+		}
+
 		w.WriteHeader(http.StatusOK)
 
 	default:
@@ -100,7 +105,7 @@ func main() {
 		SigningMethodString:   "RS256",
 		PrivateKeyLocation:    "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
 		PublicKeyLocation:     "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
-		RefreshTokenValidTime: 72 * time.Hour,
+		RefreshTokenValidTime: 10 * time.Second,
 		AuthTokenValidTime:    5 * time.Second,
 		Debug:                 true,
 		BearerTokens:          true,

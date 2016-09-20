@@ -2,47 +2,79 @@ package jwt
 
 import (
 	"errors"
+	"log"
 	"time"
 
 	jwtGo "github.com/dgrijalva/jwt-go"
 )
 
 type jwtToken struct {
-	jwtGo.Token
+	Token    *jwtGo.Token
+	ParseErr error
+	options  tokenOptions
 }
 
-func (a *Auth) buildTokenWithClaimsFromString(tokenString string) (*jwtToken, error) {
+type tokenOptions struct {
+	ValidTime           time.Duration
+	SigningMethodString string
+	Debug               bool
+}
+
+func (t *jwtToken) myLog(stoofs interface{}) {
+	if t.options.Debug {
+		log.Println(stoofs)
+	}
+}
+
+func (c *credentials) buildTokenWithClaimsFromString(tokenString string, verifyKey interface{}, validTime time.Duration) *jwtToken {
+	var newToken jwtToken
+
 	token, err := jwtGo.ParseWithClaims(tokenString, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
-		if token.Method != jwtGo.GetSigningMethod(a.options.SigningMethodString) {
-			a.myLog("Incorrect singing method on token")
+		if token.Method != jwtGo.GetSigningMethod(c.options.SigningMethodString) {
+			c.myLog("Incorrect singing method on token")
 			return nil, errors.New("Incorrect singing method on token")
 		}
-		return a.verifyKey, nil
+		return verifyKey, nil
 	})
 
-	return &jwtToken{*token}, err
+	newToken.Token = token
+	newToken.ParseErr = err
+
+	newToken.options.ValidTime = validTime
+	newToken.options.SigningMethodString = c.options.SigningMethodString
+	newToken.options.Debug = c.options.Debug
+
+	return &newToken
 }
 
-func newWithClaims(method jwtGo.SigningMethod, claims jwtGo.Claims) *jwtToken {
-	return &jwtToken{*jwtGo.NewWithClaims(method, claims)}
+func (c *credentials) newTokenWithClaims(claims jwtGo.Claims, validTime time.Duration) *jwtToken {
+	var newToken jwtToken
+
+	newToken.Token = jwtGo.NewWithClaims(jwtGo.GetSigningMethod(c.options.SigningMethodString), claims)
+	newToken.ParseErr = nil
+	newToken.options.ValidTime = validTime
+	newToken.options.SigningMethodString = c.options.SigningMethodString
+	newToken.options.Debug = c.options.Debug
+
+	return &newToken
 }
 
-func (a *Auth) updateTokenExpiry(token *jwtToken, expiry time.Duration) *jwtError {
-	tokenClaims, ok := token.Claims.(*ClaimsType)
+func (t *jwtToken) updateTokenExpiry() *jwtError {
+	tokenClaims, ok := t.Token.Claims.(*ClaimsType)
 	if !ok {
 		return newJwtError(errors.New("Cannot read token claims"), 500)
 	}
 
-	tokenClaims.StandardClaims.ExpiresAt = time.Now().Add(expiry).Unix()
+	tokenClaims.StandardClaims.ExpiresAt = time.Now().Add(t.options.ValidTime).Unix()
 
 	// update the token
-	token = newWithClaims(jwtGo.GetSigningMethod(a.options.SigningMethodString), tokenClaims)
+	t.Token = jwtGo.NewWithClaims(jwtGo.GetSigningMethod(t.options.SigningMethodString), tokenClaims)
 
 	return nil
 }
 
-func (a *Auth) updateTokenCsrf(token *jwtToken, csrfString string) *jwtError {
-	tokenClaims, ok := token.Claims.(*ClaimsType)
+func (t *jwtToken) updateTokenCsrf(csrfString string) *jwtError {
+	tokenClaims, ok := t.Token.Claims.(*ClaimsType)
 	if !ok {
 		return newJwtError(errors.New("Cannot read token claims"), 500)
 	}
@@ -50,22 +82,22 @@ func (a *Auth) updateTokenCsrf(token *jwtToken, csrfString string) *jwtError {
 	tokenClaims.Csrf = csrfString
 
 	// update the token
-	token = newWithClaims(jwtGo.GetSigningMethod(a.options.SigningMethodString), tokenClaims)
+	t.Token = jwtGo.NewWithClaims(jwtGo.GetSigningMethod(t.options.SigningMethodString), tokenClaims)
 
 	return nil
 }
 
-func (a *Auth) updateTokenExpiryAndCsrf(token *jwtToken, expiry time.Duration, csrfString string) *jwtError {
-	tokenClaims, ok := token.Claims.(*ClaimsType)
+func (t *jwtToken) updateTokenExpiryAndCsrf(csrfString string) *jwtError {
+	tokenClaims, ok := t.Token.Claims.(*ClaimsType)
 	if !ok {
 		return newJwtError(errors.New("Cannot read token claims"), 500)
 	}
 
-	tokenClaims.StandardClaims.ExpiresAt = time.Now().Add(expiry).Unix()
+	tokenClaims.StandardClaims.ExpiresAt = time.Now().Add(t.options.ValidTime).Unix()
 	tokenClaims.Csrf = csrfString
 
 	// update the token
-	token = newWithClaims(jwtGo.GetSigningMethod(a.options.SigningMethodString), tokenClaims)
+	t.Token = jwtGo.NewWithClaims(jwtGo.GetSigningMethod(t.options.SigningMethodString), tokenClaims)
 
 	return nil
 }
