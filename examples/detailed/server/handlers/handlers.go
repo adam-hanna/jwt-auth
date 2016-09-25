@@ -102,7 +102,7 @@ var loginHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 			claims.CustomClaims = make(map[string]interface{})
 			claims.CustomClaims["Role"] = user.Role
 
-			err := restrictedRoute.IssueNewTokens(w, claims)
+			err := restrictedRoute.IssueNewTokens(w, &claims)
 			if err != nil {
 				http.Error(w, "Internal Server Error", 500)
 			}
@@ -150,7 +150,7 @@ var registerHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			claims.CustomClaims = make(map[string]interface{})
 			claims.CustomClaims["Role"] = role
 
-			err := restrictedRoute.IssueNewTokens(w, claims)
+			err := restrictedRoute.IssueNewTokens(w, &claims)
 			if err != nil {
 				http.Error(w, "Internal Server Error", 500)
 			}
@@ -165,7 +165,11 @@ var registerHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 
 var logoutHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	// remove this user's ability to make requests
-	restrictedRoute.NullifyTokens(&w, r)
+	err := restrictedRoute.NullifyTokens(w, r)
+	if err != nil {
+		http.Error(w, "Internal Server Error", 500)
+		return
+	}
 	// use 302 to force browser to do GET request
 	http.Redirect(w, r, "/", 302)
 })
@@ -173,13 +177,17 @@ var logoutHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 var deleteUserHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	log.Println("Deleting user")
 
-	claims, claimsErr := restrictedRoute.GrabTokenClaims(w, r)
+	claims, claimsErr := restrictedRoute.GrabTokenClaims(r)
 	if claimsErr != nil {
 		http.Error(w, http.StatusText(500), 500)
 	} else {
 		db.DeleteUser(claims.StandardClaims.Subject)
 		// remove this user's ability to make requests
-		restrictedRoute.NullifyTokens(&w, r)
+		err := restrictedRoute.NullifyTokens(w, r)
+		if err != nil {
+			http.Error(w, "Internal Server Error", 500)
+			return
+		}
 		// use 302 to force browser to do GET request
 		http.Redirect(w, r, "/register", 302)
 	}
