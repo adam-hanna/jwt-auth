@@ -2,6 +2,7 @@
 jwt auth middleware in goLang
 
 **README Contents:**
+
 1. [Quickstart](https://github.com/adam-hanna/jwt-auth#quickstart)
 2. [Performance](https://github.com/adam-hanna/jwt-auth#performance)
 3. [Goals](https://github.com/adam-hanna/jwt-auth#goals)
