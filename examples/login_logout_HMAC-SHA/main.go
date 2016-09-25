@@ -41,7 +41,7 @@ var loginHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 			claims.CustomClaims = make(map[string]interface{})
 			claims.CustomClaims["Role"] = "user"
 
-			err := restrictedRoute.IssueNewTokens(w, claims)
+			err := restrictedRoute.IssueNewTokens(w, &claims)
 			if err != nil {
 				http.Error(w, "Internal Server Error", 500)
 			}
@@ -60,7 +60,7 @@ var loginHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 var logoutHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		err := restrictedRoute.NullifyTokens(&w, r)
+		err := restrictedRoute.NullifyTokens(w, r)
 		if err != nil {
 			http.Error(w, "Internal Server Error", 500)
 			return

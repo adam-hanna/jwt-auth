@@ -215,7 +215,7 @@ func (a *Auth) Handler(h http.Handler) http.Handler {
 		// If there was an error, do not continue.
 		if jwtErr != nil {
 			a.myLog("Error processing jwts\n" + jwtErr.Error())
-			_ := a.NullifyTokens(&w, r)
+			_ = a.NullifyTokens(w, r)
 			if reflect.TypeOf(jwtErr) == reflect.TypeOf(&j) && jwtErr.Type/100 == 4 {
 				a.unauthorizedHandler.ServeHTTP(w, r)
 				return
@@ -239,7 +239,7 @@ func (a *Auth) HandlerFuncWithNext(w http.ResponseWriter, r *http.Request, next 
 		next(w, r)
 	} else {
 		a.myLog("Error processing jwts\n" + jwtErr.Error())
-		_ := a.NullifyTokens(&w, r)
+		_ = a.NullifyTokens(w, r)
 		if reflect.TypeOf(jwtErr) == reflect.TypeOf(&j) && jwtErr.Type/100 == 4 {
 			a.unauthorizedHandler.ServeHTTP(w, r)
 		} else {
@@ -274,71 +274,39 @@ func (a *Auth) process(w http.ResponseWriter, r *http.Request) *jwtError {
 	// if we've made it this far, everything is valid!
 	// And tokens have been refreshed if need-be
 	if !a.options.VerifyOnlyServer {
-		err = a.setCredentialsOnResponseWriter(&w, &c)
+		err = a.setCredentialsOnResponseWriter(w, &c)
 		if err != nil {
 			return newJwtError(err, 500)
 		}
 	}
 
-	authTokenClaims, ok := c.AuthToken.Token.Claims.(*ClaimsType)
-	if !ok {
-		a.myLog("Cannot read auth token claims")
-		return newJwtError(errors.New("Cannot read token claims"), 500)
-	}
-	refreshTokenClaims, ok := c.RefreshToken.Token.Claims.(*ClaimsType)
-	if !ok {
-		a.myLog("Cannot read refresh token claims")
-		return newJwtError(errors.New("Cannot read token claims"), 500)
-	}
-
-	w.Header().Set("X-CSRF-Token", c.CsrfString)
-	// note @adam-hanna: this may not be correct when using a sep auth server?
-	//    							 bc it checks the request?
-	w.Header().Set("Auth-Expiry", strconv.FormatInt(authTokenClaims.StandardClaims.ExpiresAt, 10))
-	w.Header().Set("Refresh-Expiry", strconv.FormatInt(refreshTokenClaims.StandardClaims.ExpiresAt, 10))
-
 	return nil
 }
 
 // and also modify create refresh and auth token functions!
-func (a *Auth) IssueNewTokens(w http.ResponseWriter, claims ClaimsType) error {
+func (a *Auth) IssueNewTokens(w http.ResponseWriter, claims *ClaimsType) error {
 	if a.options.VerifyOnlyServer {
 		a.myLog("Server is not authorized to issue new tokens")
 		return errors.New("Server is not authorized to issue new tokens")
 
 	} else {
 		var c credentials
-		err := a.buildCredentialsFromClaims(&c, &claims)
+		err := a.buildCredentialsFromClaims(&c, claims)
 		if err != nil {
 			return errors.New(err.Error())
 		}
 
-		err = a.setCredentialsOnResponseWriter(&w, &c)
+		err = a.setCredentialsOnResponseWriter(w, &c)
 		if err != nil {
 			return errors.New(err.Error())
 		}
-
-		authTokenClaims, ok := c.AuthToken.Token.Claims.(ClaimsType)
-		if !ok {
-			a.myLog("Cannot read auth token claims")
-			return newJwtError(errors.New("Cannot read token claims"), 500)
-		}
-		refreshTokenClaims, ok := c.RefreshToken.Token.Claims.(ClaimsType)
-		if !ok {
-			a.myLog("Cannot read refresh token claims")
-			return newJwtError(errors.New("Cannot read token claims"), 500)
-		}
-
-		w.Header().Set("X-CSRF-Token", c.CsrfString)
-		w.Header().Set("Auth-Expiry", strconv.FormatInt(authTokenClaims.StandardClaims.ExpiresAt, 10))
-		w.Header().Set("Refresh-Expiry", strconv.FormatInt(refreshTokenClaims.StandardClaims.ExpiresAt, 10))
 
 		return nil
 	}
 }
 
 // note @adam-hanna: what if there are no credentials in the request?
-func (a *Auth) NullifyTokens(w *http.ResponseWriter, r *http.Request) error {
+func (a *Auth) NullifyTokens(w http.ResponseWriter, r *http.Request) error {
 	var c credentials
 	err := a.buildCredentialsFromRequest(r, &c)
 	if err != nil {
@@ -348,8 +316,8 @@ func (a *Auth) NullifyTokens(w *http.ResponseWriter, r *http.Request) error {
 
 	if a.options.BearerTokens {
 		// tokens are not in cookies
-		setHeader(*w, "Auth_Token", "")
-		setHeader(*w, "Refresh_Token", "")
+		setHeader(w, "Auth_Token", "")
+		setHeader(w, "Refresh_Token", "")
 	} else {
 		authCookie := http.Cookie{
 			Name:     "AuthToken",
@@ -359,7 +327,7 @@ func (a *Auth) NullifyTokens(w *http.ResponseWriter, r *http.Request) error {
 			Secure:   !a.options.IsDevEnv,
 		}
 
-		http.SetCookie(*w, &authCookie)
+		http.SetCookie(w, &authCookie)
 
 		refreshCookie := http.Cookie{
 			Name:     "RefreshToken",
@@ -369,15 +337,15 @@ func (a *Auth) NullifyTokens(w *http.ResponseWriter, r *http.Request) error {
 			Secure:   !a.options.IsDevEnv,
 		}
 
-		http.SetCookie(*w, &refreshCookie)
+		http.SetCookie(w, &refreshCookie)
 	}
 
 	refreshTokenClaims := c.RefreshToken.Token.Claims.(*ClaimsType)
 	a.revokeRefreshToken(refreshTokenClaims.StandardClaims.Id)
 
-	setHeader(*w, "X-CSRF-Token", "")
-	setHeader(*w, "Auth-Expiry", strconv.FormatInt(time.Now().Add(-1000*time.Hour).Unix(), 10))
-	setHeader(*w, "Refresh-Expiry", strconv.FormatInt(time.Now().Add(-1000*time.Hour).Unix(), 10))
+	setHeader(w, "X-CSRF-Token", "")
+	setHeader(w, "Auth-Expiry", strconv.FormatInt(time.Now().Add(-1000*time.Hour).Unix(), 10))
+	setHeader(w, "Refresh-Expiry", strconv.FormatInt(time.Now().Add(-1000*time.Hour).Unix(), 10))
 
 	a.myLog("Successfully nullified tokens and csrf string")
 	return nil

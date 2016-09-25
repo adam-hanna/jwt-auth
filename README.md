@@ -49,6 +49,19 @@ func main() {
 }
 ~~~
 
+## Performance
+YMMV
+
+~~~ bash
+$ cd jwt && go test -bench=.
+
+BenchmarkBaseServer-2                        10000      135586 ns/op
+BenchmarkValidAuthTokenWithCookies-2          5000      316367 ns/op
+BenchmarkExpiredAuthTokenWithCookies-2        5000      314246 ns/op
+PASS
+ok    github.com/adam-hanna/jwt-auth/jwt  15.463s
+~~~
+
 ## Goals
 It is important to understand the objective of this auth architecture. It certainly is not an applicable design for all use cases. Please read and understand the goals, below, and make changes to your own workflow to suit your specific needs.
 
@@ -107,7 +120,7 @@ type Options struct {
   RefreshTokenValidTime time.Duration
   AuthTokenValidTime    time.Duration
   Debug                 bool // true = more logs are shown
-  IsDevEnv:             bool // true = in development mode; this sets http cookies (if used) to insecure; false = production mode; this sets http cookies (if used) to secure
+  IsDevEnv              bool // true = in development mode; this sets http cookies (if used) to insecure; false = production mode; this sets http cookies (if used) to secure
 }
 ~~~
 
@@ -172,7 +185,7 @@ claims := jwt.ClaimsType{}
 claims.CustomClaims = make(map[string]interface{})
 claims.CustomClaims["Role"] = "user"
 
-err := restrictedRoute.IssueNewTokens(w, claims)
+err := restrictedRoute.IssueNewTokens(w, &claims)
 if err != nil {
   http.Error(w, "Internal Server Error", 500)
 }
@@ -213,7 +226,7 @@ log.Println(claims)
 ### Nullify auth and refresh tokens (for instance, when a user logs out)
 ~~~ go
 // in a handler func
-err = restrictedRoute.NullifyTokens(&w, r)
+err = restrictedRoute.NullifyTokens(w, r)
 if err != nil {
   http.Error(w, "Internal Server Error", 500)
   return
@@ -268,6 +281,7 @@ restrictedRoute.SetErrorHandler(myErrorHandler)
 
 var myErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
   http.Error(w, "I pitty the fool who has a 500 internal server error", 500)
+  return
 })
 ~~~
 
@@ -280,6 +294,7 @@ restrictedRoute.SetUnauthorizedHandler(MyUnauthorizedHandler)
 
 var MyUnauthorizedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
   http.Error(w, "I pitty the fool who is unauthorized", 401)
+  return
 })
 ~~~
 
@@ -513,4 +528,16 @@ func main() {
 
   n.Run("127.0.0.1:3000")
 }
+~~~
+
+## TODO
+1. Clean up the tests
+
+## Test Coverage
+~~~ bash
+$ cd jwt && go test -coverprofile=test/coverage.out
+
+coverage: 83.4% of statements
+
+$ go tool cover -html=test/coverage.out
 ~~~

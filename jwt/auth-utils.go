@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -87,7 +88,7 @@ func extractCsrfStringFromReq(r *http.Request) (string, *jwtError) {
 	}
 }
 
-func (a *Auth) setCredentialsOnResponseWriter(w *http.ResponseWriter, c *credentials) *jwtError {
+func (a *Auth) setCredentialsOnResponseWriter(w http.ResponseWriter, c *credentials) *jwtError {
 	authTokenString, err := c.AuthToken.Token.SignedString(a.signKey)
 	if err != nil {
 		return newJwtError(err, 500)
@@ -99,8 +100,8 @@ func (a *Auth) setCredentialsOnResponseWriter(w *http.ResponseWriter, c *credent
 
 	if a.options.BearerTokens {
 		// tokens are not in cookies
-		setHeader(*w, "Auth_Token", authTokenString)
-		setHeader(*w, "Refresh_Token", refreshTokenString)
+		setHeader(w, "Auth_Token", authTokenString)
+		setHeader(w, "Refresh_Token", refreshTokenString)
 	} else {
 		// tokens are in cookies
 		// note: don't use an "Expires" in auth cookies bc browsers won't send expired cookies?
@@ -111,7 +112,7 @@ func (a *Auth) setCredentialsOnResponseWriter(w *http.ResponseWriter, c *credent
 			HttpOnly: true,
 			Secure:   !a.options.IsDevEnv,
 		}
-		http.SetCookie(*w, &authCookie)
+		http.SetCookie(w, &authCookie)
 
 		refreshCookie := http.Cookie{
 			Name:     "RefreshToken",
@@ -120,8 +121,25 @@ func (a *Auth) setCredentialsOnResponseWriter(w *http.ResponseWriter, c *credent
 			HttpOnly: true,
 			Secure:   !a.options.IsDevEnv,
 		}
-		http.SetCookie(*w, &refreshCookie)
+		http.SetCookie(w, &refreshCookie)
 	}
+
+	authTokenClaims, ok := c.AuthToken.Token.Claims.(*ClaimsType)
+	if !ok {
+		a.myLog("Cannot read auth token claims")
+		return newJwtError(errors.New("Cannot read token claims"), 500)
+	}
+	refreshTokenClaims, ok := c.RefreshToken.Token.Claims.(*ClaimsType)
+	if !ok {
+		a.myLog("Cannot read refresh token claims")
+		return newJwtError(errors.New("Cannot read token claims"), 500)
+	}
+
+	w.Header().Set("X-CSRF-Token", c.CsrfString)
+	// note @adam-hanna: this may not be correct when using a sep auth server?
+	//    							 bc it checks the request?
+	w.Header().Set("Auth-Expiry", strconv.FormatInt(authTokenClaims.StandardClaims.ExpiresAt, 10))
+	w.Header().Set("Refresh-Expiry", strconv.FormatInt(refreshTokenClaims.StandardClaims.ExpiresAt, 10))
 
 	return nil
 }
@@ -137,7 +155,12 @@ func (a *Auth) buildCredentialsFromRequest(r *http.Request, c *credentials) *jwt
 		return newJwtError(err, 500)
 	}
 
-	return a.buildCredentialsFromStrings(csrfString, authTokenString, refreshTokenString, c)
+	err = a.buildCredentialsFromStrings(csrfString, authTokenString, refreshTokenString, c)
+	if err != nil {
+		return newJwtError(err, 500)
+	}
+
+	return nil
 }
 
 func (a *Auth) myLog(stoofs interface{}) {

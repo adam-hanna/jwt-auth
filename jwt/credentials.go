@@ -12,8 +12,8 @@ import (
 type credentials struct {
 	CsrfString string
 
-	AuthToken    jwtToken
-	RefreshToken jwtToken
+	AuthToken    *jwtToken
+	RefreshToken *jwtToken
 
 	options credentialsOptions
 }
@@ -54,12 +54,12 @@ func (a *Auth) buildCredentialsFromClaims(c *credentials, claims *ClaimsType) *j
 	authClaims := *claims
 	authClaims.Csrf = newCsrfString
 	authClaims.StandardClaims.ExpiresAt = time.Now().Add(a.options.AuthTokenValidTime).Unix()
-	c.AuthToken = *c.newTokenWithClaims(authClaims, a.options.AuthTokenValidTime)
+	c.AuthToken = c.newTokenWithClaims(&authClaims, a.options.AuthTokenValidTime)
 
 	refreshClaimsClaims := *claims
 	refreshClaimsClaims.Csrf = newCsrfString
 	refreshClaimsClaims.StandardClaims.ExpiresAt = time.Now().Add(a.options.RefreshTokenValidTime).Unix()
-	c.RefreshToken = *c.newTokenWithClaims(refreshClaimsClaims, a.options.RefreshTokenValidTime)
+	c.RefreshToken = c.newTokenWithClaims(&refreshClaimsClaims, a.options.RefreshTokenValidTime)
 
 	return nil
 }
@@ -82,9 +82,9 @@ func (a *Auth) buildCredentialsFromStrings(csrfString string, authTokenString st
 
 	// Note: Don't check for errors because it will be done later
 	//       Also, tokens that have expired will throw err?
-	c.AuthToken = *c.buildTokenWithClaimsFromString(authTokenString, a.verifyKey, a.options.AuthTokenValidTime)
+	c.AuthToken = c.buildTokenWithClaimsFromString(authTokenString, a.verifyKey, a.options.AuthTokenValidTime)
 
-	c.RefreshToken = *c.buildTokenWithClaimsFromString(refreshTokenString, a.verifyKey, a.options.RefreshTokenValidTime)
+	c.RefreshToken = c.buildTokenWithClaimsFromString(refreshTokenString, a.verifyKey, a.options.RefreshTokenValidTime)
 
 	return nil
 }
@@ -94,7 +94,9 @@ func (c *credentials) validateCsrfStringAgainstCredentials() *jwtError {
 	if !ok {
 		return newJwtError(errors.New("Cannot read token claims"), 500)
 	}
-	// note @adam-hanna: check csrf in refresh token?
+	// note @adam-hanna: check csrf in refresh token? Careful! These tokens are
+	// 									 coming from a request, and the csrf in the credential may have been
+	//								   updated!
 	// refreshTokenClaims, ok := c.RefreshToken.Claims.(*ClaimsType)
 	// if !ok {
 	// 	return newJwtError(errors.New("Cannot read token claims"), 500)
@@ -106,9 +108,14 @@ func (c *credentials) validateCsrfStringAgainstCredentials() *jwtError {
 	return nil
 }
 
-func generateNewCsrfString() (string, error) {
+func generateNewCsrfString() (string, *jwtError) {
 	// note @adam-hanna: allow user's to set length?
-	return randomstrings.GenerateRandomString(32)
+	newCsrf, err := randomstrings.GenerateRandomString(32)
+	if err != nil {
+		return "", newJwtError(err, 500)
+	} else {
+		return newCsrf, nil
+	}
 }
 
 func (c *credentials) updateAuthTokenFromRefreshToken() *jwtError {
@@ -137,7 +144,8 @@ func (c *credentials) updateAuthTokenFromRefreshToken() *jwtError {
 				return newJwtError(err, 500)
 			}
 
-			return c.RefreshToken.updateTokenExpiryAndCsrf(newCsrfString)
+			err = c.RefreshToken.updateTokenExpiryAndCsrf(newCsrfString)
+			return err
 		} else {
 			c.myLog("Refresh token is invalid")
 			return newJwtError(errors.New("Refresh token is invalid. Cannot refresh auth token."), 401)
@@ -177,7 +185,8 @@ func (c *credentials) validateAndUpdateCredentials() *jwtError {
 				return newJwtError(err, 500)
 			}
 
-			return c.RefreshToken.updateTokenExpiryAndCsrf(newCsrfString)
+			err = c.RefreshToken.updateTokenExpiryAndCsrf(newCsrfString)
+			return err
 		}
 		return nil
 	} else if ve, ok := c.AuthToken.ParseErr.(*jwtGo.ValidationError); ok {
@@ -186,7 +195,8 @@ func (c *credentials) validateAndUpdateCredentials() *jwtError {
 			c.myLog("Auth token is expired")
 			if !c.options.VerifyOnlyServer {
 				// attemp to update the tokens
-				return c.updateAuthTokenFromRefreshToken()
+				err = c.updateAuthTokenFromRefreshToken()
+				return err
 			}
 
 			c.myLog("Auth token is expired and server is not authorized to issue new tokens")
