@@ -1,6 +1,15 @@
 # jwt-auth
 jwt auth middleware in goLang
 
+**README Contents:**
+1. [Quickstart](https://github.com/adam-hanna/jwt-auth#quickstart)
+2. [Performance](https://github.com/adam-hanna/jwt-auth#performance)
+3. [Goals](https://github.com/adam-hanna/jwt-auth#goals)
+4. [Design](https://github.com/adam-hanna/jwt-auth#design)
+5. [API](https://github.com/adam-hanna/jwt-auth#api)
+6. [TODO](https://github.com/adam-hanna/jwt-auth#todo)
+7. [Test Coverage](https://github.com/adam-hanna/jwt-auth#test-coverage)
+8. [License](https://github.com/adam-hanna/jwt-auth#license)
 
 ## Quickstart
 ~~~ go
@@ -72,7 +81,7 @@ It is important to understand the objective of this auth architecture. It certai
 5. CSRF protection
 6. Web and/or mobile
 
-## Basics
+## Design
 The design of this auth system is based around the three major components, listed below.
 
 1. Short-lived (minutes) JWT Auth Token
@@ -540,4 +549,29 @@ $ cd jwt && go test -coverprofile=test/coverage.out
 coverage: 83.4% of statements
 
 $ go tool cover -html=test/coverage.out
+~~~
+
+## License
+~~~
+The MIT License (MIT)
+
+Copyright (c) 2016 Adam Hanna
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ~~~
