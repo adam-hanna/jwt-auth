@@ -25,7 +25,7 @@ var myUnauthorizedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http
 
 var refreshSecretHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	csrfSecret := w.Header().Get("X-CSRF-Token")
-	claims, err := restrictedRoute.GrabTokenClaims(w, r)
+	claims, err := restrictedRoute.GrabTokenClaims(r)
 	log.Println(csrfSecret, claims)
 
 	if err != nil {
@@ -59,7 +59,7 @@ var loginHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 			claims.CustomClaims = make(map[string]interface{})
 			claims.CustomClaims["Role"] = "user"
 
-			err := restrictedRoute.IssueNewTokens(w, claims)
+			err := restrictedRoute.IssueNewTokens(w, &claims)
 			if err != nil {
 				http.Error(w, "Internal Server Error", 500)
 				return
@@ -87,7 +87,12 @@ var loginHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 var logoutHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		restrictedRoute.NullifyTokens(&w, r)
+		err := restrictedRoute.NullifyTokens(w, r)
+		if err != nil {
+			http.Error(w, "Internal Server Error", 500)
+			return
+		}
+
 		w.WriteHeader(http.StatusOK)
 
 	default:
@@ -100,8 +105,8 @@ func main() {
 		SigningMethodString:   "RS256",
 		PrivateKeyLocation:    "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
 		PublicKeyLocation:     "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
-		RefreshTokenValidTime: 72 * time.Hour,
-		AuthTokenValidTime:    15 * time.Minute,
+		RefreshTokenValidTime: 10 * time.Second,
+		AuthTokenValidTime:    5 * time.Second,
 		Debug:                 true,
 		BearerTokens:          true,
 	})
