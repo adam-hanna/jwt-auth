@@ -168,26 +168,28 @@ func (c *credentials) validateAndUpdateCredentials() *jwtError {
 		// auth token has not expired and is valid
 		c.myLog("Auth token has not expired and is valid")
 
+		// note @ adam-hanna: we want this to be purely stateless
+		// 									  don't update any tokens, here
 		// If this server is allowed to issue new tokens...
 		// create a new csrf string and update the expiration time of the refresh token.
 		// We don't want to update the auth expiry here bc that would necessitate checking the...
 		// validity of the refresh token (which requires a db lookup, and hence isn't statelss)
-		if !c.options.VerifyOnlyServer {
-			newCsrfString, err := generateNewCsrfString()
-			if err != nil {
-				return newJwtError(err, 500)
-			}
+		// if !c.options.VerifyOnlyServer {
+		// 	newCsrfString, err := generateNewCsrfString()
+		// 	if err != nil {
+		// 		return newJwtError(err, 500)
+		// 	}
 
-			c.CsrfString = newCsrfString
+		// 	c.CsrfString = newCsrfString
 
-			err = c.AuthToken.updateTokenCsrf(newCsrfString)
-			if err != nil {
-				return newJwtError(err, 500)
-			}
+		// 	err = c.AuthToken.updateTokenCsrf(newCsrfString)
+		// 	if err != nil {
+		// 		return newJwtError(err, 500)
+		// 	}
 
-			err = c.RefreshToken.updateTokenExpiryAndCsrf(newCsrfString)
-			return err
-		}
+		// 	err = c.RefreshToken.updateTokenExpiryAndCsrf(newCsrfString)
+		// 	return err
+		// }
 		return nil
 	} else if ve, ok := c.AuthToken.ParseErr.(*jwtGo.ValidationError); ok {
 		c.myLog("Auth token is not valid")

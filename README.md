@@ -65,9 +65,9 @@ YMMV
 ~~~ bash
 $ cd jwt && go test -bench=.
 
-BenchmarkBaseServer-2                        10000      135586 ns/op
-BenchmarkValidAuthTokenWithCookies-2          5000      316367 ns/op
-BenchmarkExpiredAuthTokenWithCookies-2        5000      314246 ns/op
+BenchmarkBaseServer-2                        10000      137517 ns/op
+BenchmarkValidAuthTokenWithCookies-2          5000      303160 ns/op
+BenchmarkExpiredAuthTokenWithCookies-2        5000      323933 ns/op
 PASS
 ok    github.com/adam-hanna/jwt-auth/jwt  15.463s
 ~~~
@@ -100,7 +100,7 @@ These refresh tokens contain an id which can be revoked by an authorized client.
 ### 3. CSRF Secret String
 A CSRF secret string will be provided to each client and will be identical the CSRF secret in the auth and refresh tokens and will change each time an auth token is refreshed. These secrets will live in an "X-CSRF-Token" response header. These secrets will be sent along with the auth and refresh tokens on each api request. 
 
-When request are made to protected endpoint, this CSRF secret needs to be sent to the server either as a hidden form value with a name of "X-CSRF-Token", in the request header with the key of "X-CSRF-Token", or in the "Authorization" request header with a value of "Basic " + token. This secret will be checked against the secret provided in the auth token in order to prevent CSRF attacks.
+When request are made to protected endpoint, this CSRF secret needs to be sent to the server either as a hidden form value with a name of "X-CSRF-Token", in the request header with the key of "X-CSRF-Token", or in the "Authorization" request header with a value of "Basic " + token. This secret will be checked against the secret provided in the auth token in order to prevent CSRF attacks. It will be refreshed each time the auth token is refreshed from the refresh token.
 
 ## Cookies or Bearer Tokens?
 This API is setup to either use cookies (default) or bearer tokens. To use bearer tokens, set the BearerTokens option equal to true in the config settings.

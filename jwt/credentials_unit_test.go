@@ -258,7 +258,7 @@ func TestValidateAndUpdateCredentials(t *testing.T) {
 
 	c.CsrfString = tempCsrf
 
-	// now, expect everything to pass and a new csrf string to be generated and refresh token
+	// now, expect everything to pass; no new tokens or csrf will be generated
 	// expiry updated
 	oldAuthClaimsCsrf := c.AuthToken.Token.Claims.(*ClaimsType).Csrf
 	oldAuthExpiry := c.AuthToken.Token.Claims.(*ClaimsType).StandardClaims.ExpiresAt
@@ -278,77 +278,77 @@ func TestValidateAndUpdateCredentials(t *testing.T) {
 	newRefreshClaimsCsrf := c.RefreshToken.Token.Claims.(*ClaimsType).Csrf
 	newRefreshExpiry := c.RefreshToken.Token.Claims.(*ClaimsType).StandardClaims.ExpiresAt
 
-	if tempCsrf == c.CsrfString ||
-		oldAuthClaimsCsrf == newAuthClaimsCsrf ||
-		oldRefreshClaimsCsrf == newRefreshClaimsCsrf {
-		t.Error("Csrf strings were not updated")
-	}
-	if c.CsrfString != newAuthClaimsCsrf || c.CsrfString != newRefreshClaimsCsrf {
-		t.Error("New csrf strings do not match in credentials")
-	}
-
-	if oldAuthExpiry != newAuthExpiry {
-		t.Errorf("Expected auth expiry to not be updated: old: %v; new: %v", oldAuthExpiry, newAuthExpiry)
-	}
-	if oldRefreshExpiry == newRefreshExpiry || (newRefreshExpiry-oldRefreshExpiry) <= 0 {
-		t.Errorf("Expected refresh expiry to be updated: old: %v; new: %v", oldRefreshExpiry, newRefreshExpiry)
-	}
-
-	// if this is a verify only server, we don't want any changes to be made to our creds
-	// note: need to use this build function bc it sets expiry times from Now()
-	err = a.buildCredentialsFromClaims(&c, &claims)
-	if err != nil {
-		t.Errorf("Unable to build credentials; Err: %v", err)
-	}
-	// note: now need to build from strings, bc token.Valid is only true if parsed
-	authTokenString, authStringErr = c.AuthToken.Token.SignedString(a.signKey)
-	if authStringErr != nil {
-		t.Errorf("Unable to build credentials; Err: %v", authStringErr)
-	}
-	refreshTokenString, refreshStringErr = c.RefreshToken.Token.SignedString(a.signKey)
-	if refreshStringErr != nil {
-		t.Errorf("Unable to build credentials; Err: %v", refreshStringErr)
-	}
-	err = a.buildCredentialsFromStrings(c.CsrfString, authTokenString, refreshTokenString, &c)
-	if err != nil {
-		t.Errorf("Unable to build credentials; Err: %v", err)
-	}
-	c.options.VerifyOnlyServer = true
-	tempCsrf = c.CsrfString
-	oldAuthClaimsCsrf = c.AuthToken.Token.Claims.(*ClaimsType).Csrf
-	oldAuthExpiry = c.AuthToken.Token.Claims.(*ClaimsType).StandardClaims.ExpiresAt
-	oldRefreshClaimsCsrf = c.RefreshToken.Token.Claims.(*ClaimsType).Csrf
-	oldRefreshExpiry = c.RefreshToken.Token.Claims.(*ClaimsType).StandardClaims.ExpiresAt
-
-	// need to sleep to check expiry time differences
-	duration = time.Duration(1) * time.Second // Pause for 1 seconds
-	time.Sleep(duration)
-
-	err = c.validateAndUpdateCredentials()
-	if err != nil {
-		t.Errorf("Could not update and refresh credentials; Err: ", err)
-	}
-
-	newAuthClaimsCsrf = c.AuthToken.Token.Claims.(*ClaimsType).Csrf
-	newAuthExpiry = c.AuthToken.Token.Claims.(*ClaimsType).StandardClaims.ExpiresAt
-	newRefreshClaimsCsrf = c.RefreshToken.Token.Claims.(*ClaimsType).Csrf
-	newRefreshExpiry = c.RefreshToken.Token.Claims.(*ClaimsType).StandardClaims.ExpiresAt
-
 	if tempCsrf != c.CsrfString ||
 		oldAuthClaimsCsrf != newAuthClaimsCsrf ||
 		oldRefreshClaimsCsrf != newRefreshClaimsCsrf {
-		t.Error("Csrf strings were updated but this server is not authorized to do so")
+		t.Error("Csrf strings were updated")
 	}
 	if c.CsrfString != newAuthClaimsCsrf || c.CsrfString != newRefreshClaimsCsrf {
-		t.Error("New csrf strings do not match in credentials")
+		t.Error("Csrf strings do not match in credentials")
 	}
 
 	if oldAuthExpiry != newAuthExpiry {
 		t.Errorf("Expected auth expiry to not be updated: old: %v; new: %v", oldAuthExpiry, newAuthExpiry)
 	}
 	if oldRefreshExpiry != newRefreshExpiry {
-		t.Errorf("Expected refresh expiry to not be updated: old: %v; new: %v", oldRefreshExpiry, newRefreshExpiry)
+		t.Errorf("Expected refresh expiry to be not updated: old: %v; new: %v", oldRefreshExpiry, newRefreshExpiry)
 	}
+
+	// if this is a verify only server, we don't want any changes to be made to our creds
+	// note: need to use this build function bc it sets expiry times from Now()
+	// err = a.buildCredentialsFromClaims(&c, &claims)
+	// if err != nil {
+	// 	t.Errorf("Unable to build credentials; Err: %v", err)
+	// }
+	// // note: now need to build from strings, bc token.Valid is only true if parsed
+	// authTokenString, authStringErr = c.AuthToken.Token.SignedString(a.signKey)
+	// if authStringErr != nil {
+	// 	t.Errorf("Unable to build credentials; Err: %v", authStringErr)
+	// }
+	// refreshTokenString, refreshStringErr = c.RefreshToken.Token.SignedString(a.signKey)
+	// if refreshStringErr != nil {
+	// 	t.Errorf("Unable to build credentials; Err: %v", refreshStringErr)
+	// }
+	// err = a.buildCredentialsFromStrings(c.CsrfString, authTokenString, refreshTokenString, &c)
+	// if err != nil {
+	// 	t.Errorf("Unable to build credentials; Err: %v", err)
+	// }
+	// c.options.VerifyOnlyServer = true
+	// tempCsrf = c.CsrfString
+	// oldAuthClaimsCsrf = c.AuthToken.Token.Claims.(*ClaimsType).Csrf
+	// oldAuthExpiry = c.AuthToken.Token.Claims.(*ClaimsType).StandardClaims.ExpiresAt
+	// oldRefreshClaimsCsrf = c.RefreshToken.Token.Claims.(*ClaimsType).Csrf
+	// oldRefreshExpiry = c.RefreshToken.Token.Claims.(*ClaimsType).StandardClaims.ExpiresAt
+
+	// // need to sleep to check expiry time differences
+	// duration = time.Duration(1) * time.Second // Pause for 1 seconds
+	// time.Sleep(duration)
+
+	// err = c.validateAndUpdateCredentials()
+	// if err != nil {
+	// 	t.Errorf("Could not update and refresh credentials; Err: ", err)
+	// }
+
+	// newAuthClaimsCsrf = c.AuthToken.Token.Claims.(*ClaimsType).Csrf
+	// newAuthExpiry = c.AuthToken.Token.Claims.(*ClaimsType).StandardClaims.ExpiresAt
+	// newRefreshClaimsCsrf = c.RefreshToken.Token.Claims.(*ClaimsType).Csrf
+	// newRefreshExpiry = c.RefreshToken.Token.Claims.(*ClaimsType).StandardClaims.ExpiresAt
+
+	// if tempCsrf != c.CsrfString ||
+	// 	oldAuthClaimsCsrf != newAuthClaimsCsrf ||
+	// 	oldRefreshClaimsCsrf != newRefreshClaimsCsrf {
+	// 	t.Error("Csrf strings were updated but this server is not authorized to do so")
+	// }
+	// if c.CsrfString != newAuthClaimsCsrf || c.CsrfString != newRefreshClaimsCsrf {
+	// 	t.Error("New csrf strings do not match in credentials")
+	// }
+
+	// if oldAuthExpiry != newAuthExpiry {
+	// 	t.Errorf("Expected auth expiry to not be updated: old: %v; new: %v", oldAuthExpiry, newAuthExpiry)
+	// }
+	// if oldRefreshExpiry != newRefreshExpiry {
+	// 	t.Errorf("Expected refresh expiry to not be updated: old: %v; new: %v", oldRefreshExpiry, newRefreshExpiry)
+	// }
 
 	// test invalid auth tokens
 	a.options.AuthTokenValidTime = 1 * time.Nanosecond
