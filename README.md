@@ -145,7 +145,7 @@ type ClaimsType struct {
 }
 ~~~
 
-You don't have to worry about any of this, except know that there is a "CustomClaims" map that allows you to set whatever you want. See "IssueTokenClaims" and "GrabTokenClaims", below, for more.
+Note that there is a "CustomClaims" map that allows you to set whatever you want. See "IssueTokenClaims" and "GrabTokenClaims", below, for more.
 
 ### Initialize new JWT middleware
 ~~~ go
@@ -192,6 +192,7 @@ func main() {
 ~~~ go
 // in a handler func
 claims := jwt.ClaimsType{}
+claims.StandardClaims.Id = "fakeTokenId123"
 claims.CustomClaims = make(map[string]interface{})
 claims.CustomClaims["Role"] = "user"
 
@@ -202,6 +203,8 @@ if err != nil {
 
 w.WriteHeader(http.StatusOK)
 ~~~
+
+Note: a token Id must be provided if you'd later like the ability to revoke this token!
 
 ### Get a CSRF secret from a response
 ~~~ go

@@ -209,7 +209,7 @@ func (a *Auth) Handler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Process the request. If it returns an error,
 		// that indicates the request should not continue.
-		jwtErr := a.process(w, r)
+		jwtErr := a.Process(w, r)
 		var j jwtError
 
 		// If there was an error, do not continue.
@@ -231,7 +231,7 @@ func (a *Auth) Handler(h http.Handler) http.Handler {
 
 // HandlerFuncWithNext is a special implementation for Negroni, but could be used elsewhere.
 func (a *Auth) HandlerFuncWithNext(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	jwtErr := a.process(w, r)
+	jwtErr := a.Process(w, r)
 	var j jwtError
 
 	// If there was an error, do not call next.
@@ -249,7 +249,7 @@ func (a *Auth) HandlerFuncWithNext(w http.ResponseWriter, r *http.Request, next 
 }
 
 // Process runs the actual checks and returns an error if the middleware chain should stop.
-func (a *Auth) process(w http.ResponseWriter, r *http.Request) *jwtError {
+func (a *Auth) Process(w http.ResponseWriter, r *http.Request) *jwtError {
 	// cookies aren't included with options, so simply pass through
 	if r.Method == "OPTIONS" {
 		a.myLog("Method is OPTIONS")
