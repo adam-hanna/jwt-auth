@@ -7,6 +7,8 @@ branches:
 install:
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
+  - go get github.com/adam-hanna/randomstrings
+  - go get github.com/dgrijalva/jwt-go
 script:
   - cd jwt && go test -v -covermode=count -coverprofile=test/coverage.out
   - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=test/coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
