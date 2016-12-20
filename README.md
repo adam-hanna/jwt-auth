@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/adam-hanna/jwt-auth.svg?branch=master)](https://travis-ci.org/adam-hanna/jwt-auth) [![Coverage Status](https://coveralls.io/repos/github/adam-hanna/jwt-auth/badge.svg?branch=feature%2Ftravis_ci)](https://coveralls.io/github/adam-hanna/jwt-auth?branch=feature%2Ftravis_ci) [![Go Report Card](https://goreportcard.com/badge/github.com/adam-hanna/jwt-auth)](https://goreportcard.com/report/github.com/adam-hanna/jwt-auth) [![GoDoc](https://godoc.org/github.com/adam-hanna/jwt-auth/jwt?status.svg)](https://godoc.org/github.com/adam-hanna/jwt-auth/jwt)
+
 # jwt-auth
 jwt auth middleware in goLang
 
