@@ -10,7 +10,7 @@ install:
   - go get github.com/adam-hanna/randomstrings
   - go get github.com/dgrijalva/jwt-go
 script:
-  - cd jwt && go test -v -covermode=count -coverprofile=test/coverage.out
+  - cd jwt && go test -v -covermode=count -coverprofile=test/coverage.out -repotoken $COVERALLS_TOKEN
   - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=test/coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
 env:
   global:
