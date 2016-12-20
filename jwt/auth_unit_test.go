@@ -2,9 +2,9 @@ package jwt
 
 import (
 	"errors"
-	"net/Url"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
