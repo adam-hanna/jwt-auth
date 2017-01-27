@@ -36,7 +36,7 @@ func (a *Auth) extractTokenStringsFromReq(r *http.Request) (string, string, *jwt
 				return "", "", newJwtError(errors.New("Internal Server Error"), 500)
 			}
 
-			return bearerTokens.Auth_Token, bearerTokens.Refresh_Token, nil
+			return bearerTokens.AuthToken, bearerTokens.RefreshToken, nil
 		}
 
 		// tokens are form encoded

@@ -18,7 +18,7 @@ func TestExtractTokenStringsFromReq(t *testing.T) {
 		HMACKey: []byte(`#5K+¥¼ƒ~ew{¦Z³(æðTÉ(©„²ÒP.¿ÓûZ’ÒGï–Š´Ãwb="=.!r.OÀÍšõgÐ€£`),
 		RefreshTokenValidTime: 72 * time.Hour,
 		AuthTokenValidTime:    15 * time.Minute,
-		Debug:                 false,
+		Debug:                 true,
 		IsDevEnv:              true,
 	})
 	if authErr != nil {
