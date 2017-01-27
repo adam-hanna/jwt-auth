@@ -226,7 +226,7 @@ func TestSetCredentialsOnResponseWriter(t *testing.T) {
 }
 
 func TestBuildCredentialsFromRequest(t *testing.T) {
-	// this really just combines other functions ther we've already tested
+	// this really just combines other functions that we've already tested
 	// but we should test it nonetheless
 	var a Auth
 	var c credentials

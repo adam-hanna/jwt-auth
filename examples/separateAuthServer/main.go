@@ -126,6 +126,12 @@ var myUnauthorizedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http
 
 		defer resp2.Body.Close()
 		body, err := ioutil.ReadAll(resp2.Body)
+		
+		if err != nil {
+			http.Error(w, "Internal server error", 500)
+			return
+		}
+		
 		w.Write(body)
 		return
 	} else if resp.StatusCode/100 == 4 {
@@ -145,9 +151,9 @@ var restrictedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		http.Error(w, "Internal Server Error", 500)
 		return
-	} else {
-		templates.RenderTemplate(w, "restricted", &templates.RestrictedPage{csrfSecret, claims.CustomClaims["Role"].(string)})
 	}
+	
+	templates.RenderTemplate(w, "restricted", &templates.RestrictedPage{csrfSecret, claims.CustomClaims["Role"].(string)})
 })
 
 var issueClaimsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

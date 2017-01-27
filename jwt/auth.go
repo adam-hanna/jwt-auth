@@ -44,6 +44,7 @@ type Options struct {
 const defaultRefreshTokenValidTime = 72 * time.Hour
 const defaultAuthTokenValidTime = 15 * time.Minute
 
+// ClaimsType : holds the claims encoded in the jwt
 type ClaimsType struct {
 	// Standard claims are the standard jwt claims from the ietf standard
 	// https://tools.ietf.org/html/rfc7519
@@ -56,6 +57,7 @@ func defaultTokenRevoker(tokenId string) error {
 	return nil
 }
 
+// TokenRevoker : a type to revoke tokens
 type TokenRevoker func(tokenId string) error
 
 func defaultCheckTokenId(tokenId string) bool {
@@ -63,6 +65,7 @@ func defaultCheckTokenId(tokenId string) bool {
 	return true
 }
 
+// TokenIdChecker : a type to check tokens
 type TokenIdChecker func(tokenId string) bool
 
 func defaultErrorHandler(w http.ResponseWriter, r *http.Request) {
@@ -190,16 +193,19 @@ func New(auth *Auth, options ...Options) error {
 	return nil
 }
 
-// add methods to allow the changing of default functions
+// SetErrorHandler : add methods to allow the changing of default functions
 func (a *Auth) SetErrorHandler(handler http.Handler) {
 	a.errorHandler = handler
 }
+// SetUnauthorizedHandler : set the 401 handler
 func (a *Auth) SetUnauthorizedHandler(handler http.Handler) {
 	a.unauthorizedHandler = handler
 }
+// SetRevokeTokenFunction : set the function which revokes a token
 func (a *Auth) SetRevokeTokenFunction(revoker TokenRevoker) {
 	a.revokeRefreshToken = revoker
 }
+// SetCheckTokenIdFunction : set the function which checks token id's
 func (a *Auth) SetCheckTokenIdFunction(checker TokenIdChecker) {
 	a.checkTokenId = checker
 }
@@ -219,10 +225,10 @@ func (a *Auth) Handler(h http.Handler) http.Handler {
 			if reflect.TypeOf(jwtErr) == reflect.TypeOf(&j) && jwtErr.Type/100 == 4 {
 				a.unauthorizedHandler.ServeHTTP(w, r)
 				return
-			} else {
-				a.errorHandler.ServeHTTP(w, r)
-				return
 			}
+
+			a.errorHandler.ServeHTTP(w, r)
+			return
 		}
 
 		h.ServeHTTP(w, r)
@@ -283,28 +289,29 @@ func (a *Auth) Process(w http.ResponseWriter, r *http.Request) *jwtError {
 	return nil
 }
 
-// and also modify create refresh and auth token functions!
+// IssueNewTokens: and also modify create refresh and auth token functions!
 func (a *Auth) IssueNewTokens(w http.ResponseWriter, claims *ClaimsType) error {
 	if a.options.VerifyOnlyServer {
 		a.myLog("Server is not authorized to issue new tokens")
 		return errors.New("Server is not authorized to issue new tokens")
 
-	} else {
-		var c credentials
-		err := a.buildCredentialsFromClaims(&c, claims)
-		if err != nil {
-			return errors.New(err.Error())
-		}
-
-		err = a.setCredentialsOnResponseWriter(w, &c)
-		if err != nil {
-			return errors.New(err.Error())
-		}
-
-		return nil
 	}
+
+	var c credentials
+	err := a.buildCredentialsFromClaims(&c, claims)
+	if err != nil {
+		return errors.New(err.Error())
+	}
+
+	err = a.setCredentialsOnResponseWriter(w, &c)
+	if err != nil {
+		return errors.New(err.Error())
+	}
+
+	return nil
 }
 
+// NullifyTokens : invalidate tokens
 // note @adam-hanna: what if there are no credentials in the request?
 func (a *Auth) NullifyTokens(w http.ResponseWriter, r *http.Request) error {
 	var c credentials
@@ -351,6 +358,7 @@ func (a *Auth) NullifyTokens(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// GrabTokenClaims : extract the claims from the request
 // note: we always grab from the authToken
 func (a *Auth) GrabTokenClaims(r *http.Request) (ClaimsType, error) {
 	var c credentials

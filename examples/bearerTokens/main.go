@@ -75,9 +75,10 @@ var loginHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 			json.NewEncoder(w).Encode(randomString)
 			return
 
-		} else {
-			http.Error(w, "Unauthorized", 401)
 		}
+		
+		http.Error(w, "Unauthorized", 401)
+		return
 
 	default:
 		http.Error(w, "Method Not Allowed", 405)

@@ -113,9 +113,9 @@ func generateNewCsrfString() (string, *jwtError) {
 	newCsrf, err := randomstrings.GenerateRandomString(32)
 	if err != nil {
 		return "", newJwtError(err, 500)
-	} else {
-		return newCsrf, nil
 	}
+
+	return newCsrf, nil
 }
 
 func (c *credentials) updateAuthTokenFromRefreshToken() *jwtError {
@@ -146,10 +146,10 @@ func (c *credentials) updateAuthTokenFromRefreshToken() *jwtError {
 
 			err = c.RefreshToken.updateTokenExpiryAndCsrf(newCsrfString)
 			return err
-		} else {
-			c.myLog("Refresh token is invalid")
-			return newJwtError(errors.New("Refresh token is invalid. Cannot refresh auth token."), 401)
 		}
+
+		c.myLog("Refresh token is invalid")
+		return newJwtError(errors.New("Refresh token is invalid. Cannot refresh auth token."), 401)
 	} else {
 		c.myLog("Refresh token has been revoked")
 		return newJwtError(errors.New("Refresh token has been revoked. Cannot update auth token"), 401)
@@ -196,17 +196,17 @@ func (c *credentials) validateAndUpdateCredentials() *jwtError {
 		if ve.Errors&(jwtGo.ValidationErrorExpired) != 0 {
 			c.myLog("Auth token is expired")
 			if !c.options.VerifyOnlyServer {
-				// attemp to update the tokens
+				// attempt to update the tokens
 				err = c.updateAuthTokenFromRefreshToken()
 				return err
 			}
 
 			c.myLog("Auth token is expired and server is not authorized to issue new tokens")
 			return newJwtError(errors.New("Auth token is expired and server is not authorized to issue new tokens"), 401)
-		} else {
-			c.myLog("Error in auth token")
-			return newJwtError(errors.New("Auth token is not valid, and not because it has expired"), 401)
 		}
+
+		c.myLog("Error in auth token")
+		return newJwtError(errors.New("Auth token is not valid, and not because it has expired"), 401)
 	} else {
 		c.myLog("Error in auth token")
 		return newJwtError(errors.New("Auth token is not valid, and not because it has expired"), 401)

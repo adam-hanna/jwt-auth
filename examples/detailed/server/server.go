@@ -6,6 +6,7 @@ import (
 	"net/http"
 )
 
+// StartServer : start the server
 func StartServer(hostname string, port string) error {
 	host := hostname + ":" + port
 

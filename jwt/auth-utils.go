@@ -37,12 +37,12 @@ func (a *Auth) extractTokenStringsFromReq(r *http.Request) (string, string, *jwt
 			}
 
 			return bearerTokens.Auth_Token, bearerTokens.Refresh_Token, nil
-		} else {
-			// tokens are form encoded
-			// Note: we don't check for errors here, because we will check if the token is valid, later
-			r.ParseForm()
-			return strings.Join(r.Form["Auth_Token"], ""), strings.Join(r.Form["Refresh_Token"], ""), nil
 		}
+
+		// tokens are form encoded
+		// Note: we don't check for errors here, because we will check if the token is valid, later
+		r.ParseForm()
+		return strings.Join(r.Form["Auth_Token"], ""), strings.Join(r.Form["Refresh_Token"], ""), nil
 	} else {
 		AuthCookie, authErr := r.Cookie("AuthToken")
 		if authErr == http.ErrNoCookie {
@@ -83,9 +83,9 @@ func extractCsrfStringFromReq(r *http.Request) (string, *jwtError) {
 	csrfString = strings.Replace(csrfString, " ", "", -1)
 	if csrfString == "" {
 		return csrfString, newJwtError(errors.New("No CSRF string"), 401)
-	} else {
-		return csrfString, nil
 	}
+
+	return csrfString, nil
 }
 
 func (a *Auth) setCredentialsOnResponseWriter(w http.ResponseWriter, c *credentials) *jwtError {
