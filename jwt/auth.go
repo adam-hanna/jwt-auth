@@ -122,11 +122,9 @@ func (o *Options) buildSignAndVerifyKeys() (signKey interface{}, verifyKey inter
 	} else if o.SigningMethodString == "ES256" || o.SigningMethodString == "ES384" || o.SigningMethodString == "ES512" {
 		return o.buildESKeys()
 
-	} else {
-		err = errors.New("Signing method string not recognized!")
-		return
 	}
 
+	err = errors.New("Signing method string not recognized!")
 	return
 }
 
