@@ -14,6 +14,7 @@ import (
 
 var restrictedRoute jwt.Auth
 
+// InitHandlers : initialize all of our handlers
 func InitHandlers() error {
 	newRouteError := jwt.New(&restrictedRoute, jwt.Options{
 		SigningMethodString:   "RS256",
@@ -44,6 +45,7 @@ func InitHandlers() error {
 	return nil
 }
 
+// MyUnauthorizedHandler : custom 401
 var MyUnauthorizedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "I pitty the fool who is unauthorized", 401)
 })
@@ -57,7 +59,7 @@ func recoverHandler(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Panic("Recovered! Panic: %+v", err)
+				log.Panicf("Recovered! Panic: %+v", err)
 				http.Error(w, http.StatusText(500), 500)
 			}
 		}()

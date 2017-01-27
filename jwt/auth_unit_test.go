@@ -163,7 +163,7 @@ func TestSetErrorHandler(t *testing.T) {
 		t.Errorf("Incorrect response body in default error handler; Expected: %s; Received: %s", "Internal Server Error", w.Body.String())
 	}
 	if w.Code != 500 {
-		t.Errorf("Incorrect response code in default error handler; Expected: %s; Received: %d", 500, w.Code)
+		t.Errorf("Incorrect response code in default error handler; Expected: %d; Received: %d", 500, w.Code)
 	}
 
 	// test custom
@@ -180,7 +180,7 @@ func TestSetErrorHandler(t *testing.T) {
 		t.Errorf("Incorrect response body in custom error handler; Expected: %s; Received: %s", "I pitty the fool who has a 500 internal server error", w.Body.String())
 	}
 	if w.Code != 501 {
-		t.Errorf("Incorrect response code in custom error handler; Expected: %s; Received: %d", 501, w.Code)
+		t.Errorf("Incorrect response code in custom error handler; Expected: %d; Received: %d", 501, w.Code)
 	}
 }
 
@@ -209,7 +209,7 @@ func TestSetUnauthorizedHandler(t *testing.T) {
 		t.Errorf("Incorrect response body in default error handler; Expected: %s; Received: %s", "Internal Server Error", w.Body.String())
 	}
 	if w.Code != 401 {
-		t.Errorf("Incorrect response code in default error handler; Expected: %s; Received: %d", 500, w.Code)
+		t.Errorf("Incorrect response code in default error handler; Expected: %d; Received: %d", 500, w.Code)
 	}
 
 	// test custom
@@ -226,7 +226,7 @@ func TestSetUnauthorizedHandler(t *testing.T) {
 		t.Errorf("Incorrect response body in custom error handler; Expected: %s; Received: %s", "I pitty the fool who has a 500 internal server error", w.Body.String())
 	}
 	if w.Code != 402 {
-		t.Errorf("Incorrect response code in custom error handler; Expected: %s; Received: %d", 501, w.Code)
+		t.Errorf("Incorrect response code in custom error handler; Expected: %d; Received: %d", 501, w.Code)
 	}
 }
 

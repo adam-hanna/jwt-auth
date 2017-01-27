@@ -6,10 +6,12 @@ import (
 	"html/template"
 )
 
+// LoginPage : the login page
 type LoginPage struct {
 
 }
 
+// RestrictedPage the restricted page
 type RestrictedPage struct {
 	CsrfSecret string
 	Role string
@@ -17,6 +19,7 @@ type RestrictedPage struct {
 
 var templates = template.Must(template.ParseFiles("./templates/templateFiles/login.tmpl", "./templates/templateFiles/restricted.tmpl"))
 
+// RenderTemplate : render given template to response writer
 func RenderTemplate(w http.ResponseWriter, tmpl string, p interface{}) {
 	err := templates.ExecuteTemplate(w, tmpl+".tmpl", p)
 	if err != nil {

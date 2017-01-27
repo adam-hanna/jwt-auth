@@ -25,7 +25,7 @@ func BenchmarkBaseServer(b *testing.B) {
 
 	req, err := http.NewRequest("GET", ts.URL, nil)
 	if err != nil {
-		b.Fatal("Couldn't build request; Err: %v", err)
+		b.Fatalf("Couldn't build request; Err: %v", err)
 	}
 
 	tr := &http.Transport{}
@@ -106,7 +106,7 @@ func BenchmarkValidAuthTokenWithCookies(b *testing.B) {
 
 	req, err := http.NewRequest("GET", ts.URL, nil)
 	if err != nil {
-		b.Fatal("Couldn't build request; Err: %v", err)
+		b.Fatalf("Couldn't build request; Err: %v", err)
 	}
 	req.AddCookie(rc[authCookieIndex])
 	req.AddCookie(rc[refreshCookieIndex])
@@ -264,7 +264,7 @@ func BenchmarkExpiredAuthTokenWithCookies(b *testing.B) {
 
 	req, err := http.NewRequest("GET", ts.URL, nil)
 	if err != nil {
-		b.Fatal("Couldn't build request; Err: %v", err)
+		b.Fatalf("Couldn't build request; Err: %v", err)
 	}
 	req.AddCookie(rc[authCookieIndex])
 	req.AddCookie(rc[refreshCookieIndex])

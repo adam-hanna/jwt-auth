@@ -21,11 +21,12 @@ var users = map[string]models.User{}
 // the val doesn't represent anything but could be used to hold "valid", "revoked", etc.
 var refreshTokens map[string]string
 
+// InitDB : Build the "db"
 func InitDB() {
 	refreshTokens = make(map[string]string)
 }
 
-// password is hashed before getting here
+// StoreUser : add user. password is hashed before getting here
 func StoreUser(username string, password string, role string) (uuid string, err error) {
 	uuid, err = randomstrings.GenerateRandomString(32)
 	if err != nil {
@@ -53,10 +54,12 @@ func StoreUser(username string, password string, role string) (uuid string, err 
 	return uuid, err
 }
 
+// DeleteUser : remove user
 func DeleteUser(uuid string) {
 	delete(users, uuid)
 }
 
+// FetchUserById : grab a user by their uuid
 func FetchUserById(uuid string) (models.User, error) {
 	u := users[uuid]
 	blankUser := models.User{}
@@ -64,12 +67,12 @@ func FetchUserById(uuid string) (models.User, error) {
 	if blankUser != u {
 		// found the user
 		return u, nil
-	} else {
-		return u, errors.New("User not found that matches given uuid")
 	}
+	
+	return u, errors.New("User not found that matches given uuid")
 }
 
-// returns the user and the userId or an error if not found
+// FetchUserByUsername : returns the user and the userId or an error if not found
 func FetchUserByUsername(username string) (models.User, string, error) {
 	// so of course this is dumb, but it's just an example
 	// your db will be much faster!
@@ -82,6 +85,7 @@ func FetchUserByUsername(username string) (models.User, string, error) {
 	return models.User{}, "", errors.New("User not found that matches given username")
 }
 
+// StoreRefreshToken : create and add refresh token to our db
 func StoreRefreshToken() (jti string, err error) {
 	jti, err = randomstrings.GenerateRandomString(32)
 	if err != nil {
@@ -101,16 +105,19 @@ func StoreRefreshToken() (jti string, err error) {
 	return jti, err
 }
 
+// DeleteRefreshToken : remove refresh token from db
 func DeleteRefreshToken(jti string) error {
 	delete(refreshTokens, jti)
 	return nil
 }
 
+// CheckRefreshToken : is the refresh token valid?
 func CheckRefreshToken(jti string) bool {
 	log.Println("In custom check token id")
 	return refreshTokens[jti] != ""
 }
 
+// LogUserIn : log user in with provided credentials
 func LogUserIn(username string, password string) (models.User, string, error) {
 	user, uuid, userErr := FetchUserByUsername(username)
 	log.Println(user, uuid, userErr)

@@ -253,7 +253,7 @@ func TestValidateAndUpdateCredentials(t *testing.T) {
 
 	err = c.validateAndUpdateCredentials()
 	if err == nil || err.Error() != "CSRF token doesn't match value in jwts" {
-		t.Errorf("Expected error bc Csrf string doesn't match jwt's. Insted, received Err: ", err)
+		t.Errorf("Expected error bc Csrf string doesn't match jwt's. Insted, received Err: %v", err)
 	}
 
 	c.CsrfString = tempCsrf
@@ -271,7 +271,7 @@ func TestValidateAndUpdateCredentials(t *testing.T) {
 
 	err = c.validateAndUpdateCredentials()
 	if err != nil {
-		t.Errorf("Could not update and refresh credentials; Err: ", err)
+		t.Errorf("Could not update and refresh credentials; Err: %v", err)
 	}
 	newAuthClaimsCsrf := c.AuthToken.Token.Claims.(*ClaimsType).Csrf
 	newAuthExpiry := c.AuthToken.Token.Claims.(*ClaimsType).StandardClaims.ExpiresAt
@@ -375,7 +375,7 @@ func TestValidateAndUpdateCredentials(t *testing.T) {
 	c.options.VerifyOnlyServer = true
 	err = c.validateAndUpdateCredentials()
 	if err == nil || err.Error() != "Auth token is expired and server is not authorized to issue new tokens" {
-		t.Errorf("Auth token is not valid, and server is not allowed to update tokens but did or expierenced some other err; Err: %v", err)
+		t.Errorf("Auth token is not valid, and server is not allowed to update tokens but did or experienced some other err; Err: %v", err)
 	}
 
 	c.options.VerifyOnlyServer = false
@@ -390,7 +390,7 @@ func TestValidateAndUpdateCredentials(t *testing.T) {
 	time.Sleep(duration)
 	err = c.validateAndUpdateCredentials()
 	if err != nil {
-		t.Errorf("Could not update and refresh credentials; Err: ", err)
+		t.Errorf("Could not update and refresh credentials; Err: %v", err)
 	}
 
 	newAuthClaimsCsrf = c.AuthToken.Token.Claims.(*ClaimsType).Csrf

@@ -23,9 +23,9 @@ var restrictedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		http.Error(w, "Internal Server Error", 500)
 		return
-	} else {
-		templates.RenderTemplate(w, "restricted", &templates.RestrictedPage{csrfSecret, claims.CustomClaims["Role"].(string)})
 	}
+
+	templates.RenderTemplate(w, "restricted", &templates.RestrictedPage{csrfSecret, claims.CustomClaims["Role"].(string)})
 })
 
 var loginHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
