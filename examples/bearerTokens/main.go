@@ -76,7 +76,7 @@ var loginHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 			return
 
 		}
-		
+
 		http.Error(w, "Unauthorized", 401)
 		return
 

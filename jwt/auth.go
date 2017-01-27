@@ -197,14 +197,17 @@ func New(auth *Auth, options ...Options) error {
 func (a *Auth) SetErrorHandler(handler http.Handler) {
 	a.errorHandler = handler
 }
+
 // SetUnauthorizedHandler : set the 401 handler
 func (a *Auth) SetUnauthorizedHandler(handler http.Handler) {
 	a.unauthorizedHandler = handler
 }
+
 // SetRevokeTokenFunction : set the function which revokes a token
 func (a *Auth) SetRevokeTokenFunction(revoker TokenRevoker) {
 	a.revokeRefreshToken = revoker
 }
+
 // SetCheckTokenIdFunction : set the function which checks token id's
 func (a *Auth) SetCheckTokenIdFunction(checker TokenIdChecker) {
 	a.checkTokenId = checker
@@ -289,7 +292,7 @@ func (a *Auth) Process(w http.ResponseWriter, r *http.Request) *jwtError {
 	return nil
 }
 
-// IssueNewTokens: and also modify create refresh and auth token functions!
+// IssueNewTokens : and also modify create refresh and auth token functions!
 func (a *Auth) IssueNewTokens(w http.ResponseWriter, claims *ClaimsType) error {
 	if a.options.VerifyOnlyServer {
 		a.myLog("Server is not authorized to issue new tokens")

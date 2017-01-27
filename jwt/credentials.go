@@ -150,10 +150,11 @@ func (c *credentials) updateAuthTokenFromRefreshToken() *jwtError {
 
 		c.myLog("Refresh token is invalid")
 		return newJwtError(errors.New("Refresh token is invalid. Cannot refresh auth token."), 401)
-	} else {
-		c.myLog("Refresh token has been revoked")
-		return newJwtError(errors.New("Refresh token has been revoked. Cannot update auth token"), 401)
 	}
+
+	c.myLog("Refresh token has been revoked")
+	return newJwtError(errors.New("Refresh token has been revoked. Cannot update auth token"), 401)
+
 }
 
 func (c *credentials) validateAndUpdateCredentials() *jwtError {

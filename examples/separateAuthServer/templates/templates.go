@@ -1,20 +1,19 @@
 package templates
 
 import (
+	"html/template"
 	"log"
 	"net/http"
-	"html/template"
 )
 
 // LoginPage : The login page
 type LoginPage struct {
-
 }
 
 // RestrictedPage : the restricted page
 type RestrictedPage struct {
 	CsrfSecret string
-	Role string
+	Role       string
 }
 
 var templates = template.Must(template.ParseFiles("./templates/templateFiles/login.tmpl", "./templates/templateFiles/restricted.tmpl"))
