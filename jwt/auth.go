@@ -80,19 +80,12 @@ func defaultUnauthorizedHandler(w http.ResponseWriter, r *http.Request) {
 
 // this is a general json struct for when bearer tokens are used
 type bearerTokensStruct struct {
-	Auth_Token    string `json: "Auth_Token"`
-	Refresh_Token string `json: "Refresh_Token"`
+	AuthToken    string `json:"Auth_Token"`
+	RefreshToken string `json:"Refresh_Token"`
 }
 
 // New constructs a new Auth instance with supplied options.
-func New(auth *Auth, options ...Options) error {
-	var o Options
-	if len(options) == 0 {
-		o = Options{}
-	} else {
-		o = options[0]
-	}
-
+func New(auth *Auth, o Options) error {
 	// check if durations have been provided for auth and refresh token exp
 	// if not, set them equal to the default
 	if o.RefreshTokenValidTime <= 0 {
@@ -103,83 +96,9 @@ func New(auth *Auth, options ...Options) error {
 	}
 
 	// create the sign and verify keys
-	var signKey interface{}
-	var verifyKey interface{}
-	if o.SigningMethodString == "HS256" || o.SigningMethodString == "HS384" || o.SigningMethodString == "HS512" {
-		if len(o.HMACKey) == 0 {
-			return errors.New("When using an HMAC-SHA signing method, please provide an HMACKey")
-		}
-		if !o.VerifyOnlyServer {
-			signKey = o.HMACKey
-		}
-		verifyKey = o.HMACKey
-
-	} else if o.SigningMethodString == "RS256" || o.SigningMethodString == "RS384" || o.SigningMethodString == "RS512" {
-		// check to make sure the provided options are valid
-		if o.PrivateKeyLocation == "" && !o.VerifyOnlyServer {
-			return errors.New("Private key location is required!")
-		}
-		if o.PublicKeyLocation == "" {
-			return errors.New("Public key location is required!")
-		}
-
-		// read the key files
-		if !o.VerifyOnlyServer {
-			signBytes, err := ioutil.ReadFile(o.PrivateKeyLocation)
-			if err != nil {
-				return err
-			}
-
-			signKey, err = jwtGo.ParseRSAPrivateKeyFromPEM(signBytes)
-			if err != nil {
-				return err
-			}
-		}
-
-		verifyBytes, err := ioutil.ReadFile(o.PublicKeyLocation)
-		if err != nil {
-			return err
-		}
-
-		verifyKey, err = jwtGo.ParseRSAPublicKeyFromPEM(verifyBytes)
-		if err != nil {
-			return err
-		}
-
-	} else if o.SigningMethodString == "ES256" || o.SigningMethodString == "ES384" || o.SigningMethodString == "ES512" {
-		// check to make sure the provided options are valid
-		if o.PrivateKeyLocation == "" && !o.VerifyOnlyServer {
-			return errors.New("Private key location is required!")
-		}
-		if o.PublicKeyLocation == "" {
-			return errors.New("Public key location is required!")
-		}
-
-		// read the key files
-		if !o.VerifyOnlyServer {
-			signBytes, err := ioutil.ReadFile(o.PrivateKeyLocation)
-			if err != nil {
-				return err
-			}
-
-			signKey, err = jwtGo.ParseECPrivateKeyFromPEM(signBytes)
-			if err != nil {
-				return err
-			}
-		}
-
-		verifyBytes, err := ioutil.ReadFile(o.PublicKeyLocation)
-		if err != nil {
-			return err
-		}
-
-		verifyKey, err = jwtGo.ParseECPublicKeyFromPEM(verifyBytes)
-		if err != nil {
-			return err
-		}
-
-	} else {
-		return errors.New("Signing method string not recognized!")
+	signKey, verifyKey, err := o.buildSignAndVerifyKeys()
+	if err != nil {
+		return err
 	}
 
 	auth.signKey = signKey
@@ -191,6 +110,117 @@ func New(auth *Auth, options ...Options) error {
 	auth.checkTokenId = TokenIdChecker(defaultCheckTokenId)
 
 	return nil
+}
+
+func (o *Options) buildSignAndVerifyKeys() (signKey interface{}, verifyKey interface{}, err error) {
+	if o.SigningMethodString == "HS256" || o.SigningMethodString == "HS384" || o.SigningMethodString == "HS512" {
+		return o.buildHMACKeys()
+
+	} else if o.SigningMethodString == "RS256" || o.SigningMethodString == "RS384" || o.SigningMethodString == "RS512" {
+		return o.buildRSAKeys()
+
+	} else if o.SigningMethodString == "ES256" || o.SigningMethodString == "ES384" || o.SigningMethodString == "ES512" {
+		return o.buildESKeys()
+
+	} else {
+		err = errors.New("Signing method string not recognized!")
+		return
+	}
+
+	return
+}
+
+func (o *Options) buildHMACKeys() (signKey interface{}, verifyKey interface{}, err error) {
+	if len(o.HMACKey) == 0 {
+		err = errors.New("When using an HMAC-SHA signing method, please provide an HMACKey")
+		return
+	}
+	if !o.VerifyOnlyServer {
+		signKey = o.HMACKey
+	}
+	verifyKey = o.HMACKey
+
+	return
+}
+
+func (o *Options) buildRSAKeys() (signKey interface{}, verifyKey interface{}, err error) {
+	var signBytes []byte
+	var verifyBytes []byte
+
+	// check to make sure the provided options are valid
+	if o.PrivateKeyLocation == "" && !o.VerifyOnlyServer {
+		err = errors.New("Private key location is required!")
+		return
+	}
+	if o.PublicKeyLocation == "" {
+		err = errors.New("Public key location is required!")
+		return
+	}
+
+	// read the key files
+	if !o.VerifyOnlyServer {
+		signBytes, err = ioutil.ReadFile(o.PrivateKeyLocation)
+		if err != nil {
+			return
+		}
+
+		signKey, err = jwtGo.ParseRSAPrivateKeyFromPEM(signBytes)
+		if err != nil {
+			return
+		}
+	}
+
+	verifyBytes, err = ioutil.ReadFile(o.PublicKeyLocation)
+	if err != nil {
+		return
+	}
+
+	verifyKey, err = jwtGo.ParseRSAPublicKeyFromPEM(verifyBytes)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (o *Options) buildESKeys() (signKey interface{}, verifyKey interface{}, err error) {
+	var signBytes []byte
+	var verifyBytes []byte
+
+	// check to make sure the provided options are valid
+	if o.PrivateKeyLocation == "" && !o.VerifyOnlyServer {
+		err = errors.New("Private key location is required!")
+		return
+	}
+	if o.PublicKeyLocation == "" {
+		err = errors.New("Public key location is required!")
+		return
+	}
+
+	// read the key files
+	if !o.VerifyOnlyServer {
+		signBytes, err = ioutil.ReadFile(o.PrivateKeyLocation)
+		if err != nil {
+			return
+		}
+
+		signKey, err = jwtGo.ParseECPrivateKeyFromPEM(signBytes)
+		if err != nil {
+			return
+		}
+	}
+
+	verifyBytes, err = ioutil.ReadFile(o.PublicKeyLocation)
+	if err != nil {
+		return
+	}
+
+	verifyKey, err = jwtGo.ParseECPublicKeyFromPEM(verifyBytes)
+	if err != nil {
+		return
+	}
+
+	return
 }
 
 // SetErrorHandler : add methods to allow the changing of default functions
