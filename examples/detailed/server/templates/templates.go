@@ -1,26 +1,26 @@
 package templates
 
 import (
+	"html/template"
 	"log"
 	"net/http"
-	"html/template"
 )
 
 // LoginPage : the login page
 type LoginPage struct {
 	BAlertUser bool
-	AlertMsg string
+	AlertMsg   string
 }
 
 // RegisterPage : the register page
 type RegisterPage struct {
 	BAlertUser bool
-	AlertMsg string
+	AlertMsg   string
 }
 
 // RestrictedPage : the restricted page
 type RestrictedPage struct {
-	CsrfSecret string
+	CsrfSecret    string
 	SecretMessage string
 }
 

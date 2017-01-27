@@ -68,7 +68,7 @@ func FetchUserById(uuid string) (models.User, error) {
 		// found the user
 		return u, nil
 	}
-	
+
 	return u, errors.New("User not found that matches given uuid")
 }
 

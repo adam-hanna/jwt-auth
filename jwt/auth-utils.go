@@ -43,27 +43,27 @@ func (a *Auth) extractTokenStringsFromReq(r *http.Request) (string, string, *jwt
 		// Note: we don't check for errors here, because we will check if the token is valid, later
 		r.ParseForm()
 		return strings.Join(r.Form["Auth_Token"], ""), strings.Join(r.Form["Refresh_Token"], ""), nil
-	} else {
-		AuthCookie, authErr := r.Cookie("AuthToken")
-		if authErr == http.ErrNoCookie {
-			a.myLog("Unauthorized attempt! No auth cookie")
-			return "", "", newJwtError(errors.New("No auth cookie"), 401)
-		} else if authErr != nil {
-			// a.myLog(authErr)
-			return "", "", newJwtError(errors.New("Internal Server Error"), 500)
-		}
-
-		RefreshCookie, refreshErr := r.Cookie("RefreshToken")
-		if refreshErr == http.ErrNoCookie {
-			a.myLog("Unauthorized attempt! No refresh cookie")
-			return "", "", newJwtError(errors.New("No refresh cookie"), 401)
-		} else if refreshErr != nil {
-			a.myLog(refreshErr)
-			return "", "", newJwtError(errors.New("Internal Server Error"), 500)
-		}
-
-		return AuthCookie.Value, RefreshCookie.Value, nil
 	}
+
+	AuthCookie, authErr := r.Cookie("AuthToken")
+	if authErr == http.ErrNoCookie {
+		a.myLog("Unauthorized attempt! No auth cookie")
+		return "", "", newJwtError(errors.New("No auth cookie"), 401)
+	} else if authErr != nil {
+		// a.myLog(authErr)
+		return "", "", newJwtError(errors.New("Internal Server Error"), 500)
+	}
+
+	RefreshCookie, refreshErr := r.Cookie("RefreshToken")
+	if refreshErr == http.ErrNoCookie {
+		a.myLog("Unauthorized attempt! No refresh cookie")
+		return "", "", newJwtError(errors.New("No refresh cookie"), 401)
+	} else if refreshErr != nil {
+		a.myLog(refreshErr)
+		return "", "", newJwtError(errors.New("Internal Server Error"), 500)
+	}
+
+	return AuthCookie.Value, RefreshCookie.Value, nil
 }
 
 func extractCsrfStringFromReq(r *http.Request) (string, *jwtError) {
