@@ -1,10 +1,7 @@
 package jwt
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -17,32 +14,8 @@ func (a *Auth) extractTokenStringsFromReq(r *http.Request) (string, string, *jwt
 	// read cookies
 	if a.options.BearerTokens {
 		// tokens are not in cookies
-		if r.Header.Get("Content-Type") == "application/json" {
-			// tokens are in the body
-			content, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				a.myLog("Err decoding bearer tokens json \n" + err.Error())
-				// a.errorHandler.ServeHTTP(w, r)
-				return "", "", newJwtError(errors.New("Internal Server Error"), 500)
-			}
-			// write back to the body so it can be used elsewhere
-			r.Body = ioutil.NopCloser(bytes.NewReader(content))
-
-			var bearerTokens bearerTokensStruct
-			err = json.Unmarshal(content, &bearerTokens)
-			if err != nil {
-				a.myLog("Err decoding bearer tokens json \n" + err.Error())
-				// a.errorHandler.ServeHTTP(w, r)
-				return "", "", newJwtError(errors.New("Internal Server Error"), 500)
-			}
-
-			return bearerTokens.AuthToken, bearerTokens.RefreshToken, nil
-		}
-
-		// tokens are form encoded
 		// Note: we don't check for errors here, because we will check if the token is valid, later
-		r.ParseForm()
-		return strings.Join(r.Form["Auth_Token"], ""), strings.Join(r.Form["Refresh_Token"], ""), nil
+		return r.Header.Get("X-Auth-Token"), r.Header.Get("X-Refresh-Token"), nil
 	}
 
 	AuthCookie, authErr := r.Cookie("AuthToken")
@@ -100,8 +73,8 @@ func (a *Auth) setCredentialsOnResponseWriter(w http.ResponseWriter, c *credenti
 
 	if a.options.BearerTokens {
 		// tokens are not in cookies
-		setHeader(w, "Auth_Token", authTokenString)
-		setHeader(w, "Refresh_Token", refreshTokenString)
+		setHeader(w, "X-Auth-Token", authTokenString)
+		setHeader(w, "X-Refresh-Token", refreshTokenString)
 	} else {
 		// tokens are in cookies
 		// note: don't use an "Expires" in auth cookies bc browsers won't send expired cookies?
