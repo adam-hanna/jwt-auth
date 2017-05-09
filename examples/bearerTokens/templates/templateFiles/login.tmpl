@@ -64,8 +64,8 @@
 						console.log("Success!", data, textStatus, request);
 
 						window.localStorage.setItem("X-CSRF-Token", request.getResponseHeader("X-CSRF-Token"));
-						window.localStorage.setItem("Auth_Token", request.getResponseHeader("Auth_Token"));
-						window.localStorage.setItem("Refresh_Token", request.getResponseHeader("Refresh_Token"));
+						window.localStorage.setItem("X-Auth-Token", request.getResponseHeader("X-Auth-Token"));
+						window.localStorage.setItem("X-Refresh-Token", request.getResponseHeader("X-Refresh-Token"));
 
 						$("#secret").html(data.secret);
 					},
@@ -78,27 +78,25 @@
 			}
 
 			$("#refreshSecret").on("click", function() {
-				var data = {
-					"Auth_Token":    window.localStorage.getItem("Auth_Token"),
-					"Refresh_Token": window.localStorage.getItem("Refresh_Token")
-				};
 				var headers = {
-					"Authorization": "Basic " + window.localStorage.getItem("X-CSRF-Token")
+					"Authorization": "Bearer " + window.localStorage.getItem("X-CSRF-Token"),
+					"X-Auth-Token":    window.localStorage.getItem("X-Auth-Token"),
+					"X-Refresh-Token": window.localStorage.getItem("X-Refresh-Token")
 				};
 				
 				$.ajax({
 					'type': 	 		 'POST',
 					'url': 		 		 '/refreshSecret',
 					'headers': 		 headers,
-					'data': 	 		 JSON.stringify(data),
+					'data': 	 		 JSON.stringify({}),
       		'dataType':  	 'json',
       		'contentType': 'application/json',
 					success: function(data, textStatus, request) {
 						console.log("Success!", data, textStatus, request);
 						
 						window.localStorage.setItem("X-CSRF-Token", request.getResponseHeader("X-CSRF-Token"));
-						window.localStorage.setItem("Auth_Token", request.getResponseHeader("Auth_Token"));
-						window.localStorage.setItem("Refresh_Token", request.getResponseHeader("Refresh_Token"));
+						window.localStorage.setItem("X-Auth-Token", request.getResponseHeader("X-Auth-Token"));
+						window.localStorage.setItem("X-Refresh-Token", request.getResponseHeader("X-Refresh-Token"));
 
 						$("#secret").html(data.secret);
 					},
@@ -109,25 +107,23 @@
 			});
 
 			$("#logout").on("click", function() {
-				var data = {
-					"Auth_Token":    window.localStorage.getItem("Auth_Token"),
-					"Refresh_Token": window.localStorage.getItem("Refresh_Token")
-				};
 				var headers = {
-					"Authorization": "Basic " + window.localStorage.getItem("X-CSRF-Token")
+					"Authorization": "Bearer " + window.localStorage.getItem("X-CSRF-Token"),
+					"X-Auth-Token":    window.localStorage.getItem("X-Auth-Token"),
+					"X-Refresh-Token": window.localStorage.getItem("X-Refresh-Token")
 				};
 
 				$.ajax({
 					'type': 	 'POST',
 					'url': 		 '/logout',
 					'headers': headers,
-					'data': 	 data,
+					'data': 	 {},
 					success: function(data, textStatus, request) {
 						console.log("Success!", data, textStatus, request);
 						
 						window.localStorage.setItem("X-CSRF-Token", "");
-						window.localStorage.setItem("Auth_Token", "");
-						window.localStorage.setItem("Refresh_Token", "");
+						window.localStorage.setItem("X-Auth-Token", "");
+						window.localStorage.setItem("X-Refresh-Token", "");
 
 						$("#secret").html("Please login!");
 					},

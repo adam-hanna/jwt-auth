@@ -170,14 +170,14 @@ func BenchmarkValidAuthTokenWithCookies(b *testing.B) {
 // 	}
 
 // 	// form := url.Values{}
-// 	// form.Add("Auth_Token", authTokenString)
-// 	// form.Add("Refresh_Token", refreshTokenString)
+// 	// form.Add("X-Auth-Token", authTokenString)
+// 	// form.Add("X-Refresh-Token", refreshTokenString)
 // 	// form.Add("X-CSRF-Token", c.CsrfString)
 // 	// // log.Println(authTokenString, refreshTokenString, c.CsrfString)
 
 // 	// req, reqErr := http.NewRequest("POST", ts.URL, strings.NewReader(form.Encode()))
 // 	// now test json encoded tokens
-// 	var jsonStr = []byte(`{"Auth_Token":"` + authTokenString + `", "Refresh_Token": "` + refreshTokenString + `"}`)
+// 	var jsonStr = []byte(`{"X-Auth-Token":"` + authTokenString + `", "X-Refresh-Token": "` + refreshTokenString + `"}`)
 // 	req, reqErr := http.NewRequest("POST", ts.URL, bytes.NewBuffer(jsonStr))
 // 	if reqErr != nil {
 // 		b.Fatal("Error building request for testing; err: %v", reqErr)

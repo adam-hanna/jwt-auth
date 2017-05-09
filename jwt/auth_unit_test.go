@@ -47,6 +47,25 @@ var newAuthTests = []struct {
 	{
 		Options{
 			SigningMethodString: "RS256",
+			PrivateKeyLocation:  "test/priv.rsa",
+			PublicKeyLocation:   "test/priv.rsa.pub",
+			BearerTokens:        true,
+			VerifyOnlyServer:    false,
+		},
+		true,
+	},
+	{
+		Options{
+			SigningMethodString: "RS256",
+			PublicKeyLocation:   "test/priv.rsa.pub",
+			BearerTokens:        true,
+			VerifyOnlyServer:    true,
+		},
+		true,
+	},
+	{
+		Options{
+			SigningMethodString: "RS256",
 			PublicKeyLocation:   "test/priv.rsa.pub",
 			VerifyOnlyServer:    false,
 		},
@@ -328,77 +347,75 @@ func TestNullifyTokens(t *testing.T) {
 	}
 
 	// first, test bearer tokens
-	a.options.BearerTokens = true
+	if a.options.BearerTokens {
+		w := httptest.NewRecorder()
 
-	w := httptest.NewRecorder()
-	form := url.Values{}
-	form.Add("Auth_Token", authTokenString)
-	form.Add("Refresh_Token", refreshTokenString)
-	form.Add("X-CSRF-Token", c.CsrfString)
+		req, reqErr := http.NewRequest("POST", "http://localhost:8080/", nil)
+		if reqErr != nil {
+			t.Errorf("Error building request for testing; err: %v", reqErr)
+		}
 
-	req, reqErr := http.NewRequest("POST", "http://localhost:8080/", strings.NewReader(form.Encode()))
-	if reqErr != nil {
-		t.Errorf("Error building request for testing; err: %v", reqErr)
-	}
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Add(a.options.AuthTokenName, authTokenString)
+		req.Header.Add(a.options.RefreshTokenName, refreshTokenString)
+		req.Header.Add(a.options.CSRFTokenName, c.CsrfString)
 
-	setHeader(w, "Auth_Token", authTokenString)
-	setHeader(w, "Refresh_Token", refreshTokenString)
-	setHeader(w, "X-CSRF-Token", c.CsrfString)
+		setHeader(w, a.options.AuthTokenName, authTokenString)
+		setHeader(w, a.options.RefreshTokenName, refreshTokenString)
+		setHeader(w, a.options.CSRFTokenName, c.CsrfString)
 
-	nullifyErr := a.NullifyTokens(w, req)
-	if nullifyErr != nil {
-		t.Errorf("Could not nullify tokens; Err: %v", nullifyErr)
-	}
+		nullifyErr := a.NullifyTokens(w, req)
+		if nullifyErr != nil {
+			t.Errorf("Could not nullify tokens; Err: %v", nullifyErr)
+		}
 
-	if w.Header().Get("Auth_Token") != "" ||
-		w.Header().Get("Refresh_Token") != "" ||
-		w.Header().Get("X-CSRF-Token") != "" {
-		t.Errorf("Expected credentials in response header to be blank after nullification; Received auth: %s, refresh: %s, csrf: %s", w.Header().Get("Auth_Token"), w.Header().Get("Refresh_Token"), w.Header().Get("X-CSRF-Token"))
-	}
+		if w.Header().Get(a.options.AuthTokenName) != "" ||
+			w.Header().Get(a.options.RefreshTokenName) != "" ||
+			w.Header().Get(a.options.CSRFTokenName) != "" {
+			t.Errorf("Expected credentials in response header to be blank after nullification; Received auth: %s, refresh: %s, csrf: %s", w.Header().Get(a.options.AuthTokenName), w.Header().Get(a.options.RefreshTokenName), w.Header().Get(a.options.CSRFTokenName))
+		}
 
-	// Second, check cookies
-	a.options.BearerTokens = false
-	w = httptest.NewRecorder()
-	form = url.Values{}
-	form.Add("X-CSRF-Token", c.CsrfString)
-	req, reqErr = http.NewRequest("POST", "http://localhost:8080/", strings.NewReader(form.Encode()))
-	if reqErr != nil {
-		t.Errorf("Error building request for testing; err: %v", reqErr)
-	}
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	} else {
+		w := httptest.NewRecorder()
+		form := url.Values{}
+		form.Add(a.options.CSRFTokenName, c.CsrfString)
+		req, reqErr := http.NewRequest("POST", "http://localhost:8080/", strings.NewReader(form.Encode()))
+		if reqErr != nil {
+			t.Errorf("Error building request for testing; err: %v", reqErr)
+		}
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	authCookie := http.Cookie{
-		Name:  "AuthToken",
-		Value: authTokenString,
-		// Expires:  time.Now().Add(a.options.AuthTokenValidTime),
-		HttpOnly: true,
-		Secure:   true,
-	}
-	req.AddCookie(&authCookie)
+		authCookie := http.Cookie{
+			Name:  a.options.AuthTokenName,
+			Value: authTokenString,
+			// Expires:  time.Now().Add(a.options.AuthTokenValidTime),
+			HttpOnly: true,
+			Secure:   true,
+		}
+		req.AddCookie(&authCookie)
 
-	refreshCookie := http.Cookie{
-		Name:     "RefreshToken",
-		Value:    refreshTokenString,
-		Expires:  time.Now().Add(a.options.RefreshTokenValidTime),
-		HttpOnly: true,
-		Secure:   true,
-	}
-	req.AddCookie(&refreshCookie)
+		refreshCookie := http.Cookie{
+			Name:     a.options.RefreshTokenName,
+			Value:    refreshTokenString,
+			Expires:  time.Now().Add(a.options.RefreshTokenValidTime),
+			HttpOnly: true,
+			Secure:   true,
+		}
+		req.AddCookie(&refreshCookie)
 
-	err = a.setCredentialsOnResponseWriter(w, &c)
-	if err != nil {
-		t.Errorf("Could not set credentials on response writer; Err: %v", err)
-	}
+		err = a.setCredentialsOnResponseWriter(w, &c)
+		if err != nil {
+			t.Errorf("Could not set credentials on response writer; Err: %v", err)
+		}
 
-	nullifyErr = a.NullifyTokens(w, req)
-	if nullifyErr != nil {
-		t.Errorf("Could not nullify tokens; Err: %v", nullifyErr)
-	}
+		nullifyErr := a.NullifyTokens(w, req)
+		if nullifyErr != nil {
+			t.Errorf("Could not nullify tokens; Err: %v", nullifyErr)
+		}
 
-	setCookieString := strings.Join(w.Header()["Set-Cookie"], "")
-	if w.Header().Get("X-CSRF-Token") != "" || !strings.Contains(setCookieString, "AuthToken=;") || !strings.Contains(setCookieString, "RefreshToken=;") {
-		t.Errorf("Credentials were not nullified on response writer; Set-Cookie header: %s; CSRF Header: %s", setCookieString, w.Header().Get("X-CSRF-Token"))
+		setCookieString := strings.Join(w.Header()["Set-Cookie"], "")
+		if w.Header().Get(a.options.CSRFTokenName) != "" || !strings.Contains(setCookieString, a.options.AuthTokenName+"=;") || !strings.Contains(setCookieString, a.options.RefreshTokenName+"=;") {
+			t.Errorf("Credentials were not nullified on response writer; Set-Cookie header: %s; CSRF Header: %s", setCookieString, w.Header().Get(a.options.CSRFTokenName))
+		}
 	}
 
 	// finally, check to make sure the refresh token id is being revoked
@@ -434,19 +451,36 @@ func TestGrabTokenClaims(t *testing.T) {
 		t.Errorf("Unable to build credentials; Err: %v", refreshStringErr)
 	}
 
-	// first, test bearer tokens
-	a.options.BearerTokens = true
-
-	form := url.Values{}
-	form.Add("Auth_Token", authTokenString)
-	form.Add("Refresh_Token", refreshTokenString)
-	form.Add("X-CSRF-Token", c.CsrfString)
-
-	req, reqErr := http.NewRequest("POST", "http://localhost:8080/", strings.NewReader(form.Encode()))
+	req, reqErr := http.NewRequest("POST", "http://localhost:8080/", nil) // strings.NewReader(form.Encode())
 	if reqErr != nil {
 		t.Errorf("Error building request for testing; err: %v", reqErr)
 	}
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	if a.options.BearerTokens {
+		req.Header.Add(a.options.AuthTokenName, authTokenString)
+		req.Header.Add(a.options.RefreshTokenName, refreshTokenString)
+		req.Header.Add(a.options.CSRFTokenName, c.CsrfString)
+	} else {
+		authCookie := http.Cookie{
+			Name:  a.options.AuthTokenName,
+			Value: authTokenString,
+			// Expires:  time.Now().Add(a.options.AuthTokenValidTime),
+			HttpOnly: true,
+			Secure:   true,
+		}
+		req.AddCookie(&authCookie)
+
+		refreshCookie := http.Cookie{
+			Name:     a.options.RefreshTokenName,
+			Value:    refreshTokenString,
+			Expires:  time.Now().Add(a.options.RefreshTokenValidTime),
+			HttpOnly: true,
+			Secure:   true,
+		}
+		req.AddCookie(&refreshCookie)
+
+		req.Header.Add(a.options.CSRFTokenName, c.CsrfString)
+	}
 
 	myNewClaims, grabErr := a.GrabTokenClaims(req)
 	if grabErr != nil {

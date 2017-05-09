@@ -37,12 +37,22 @@ type Options struct {
 	BearerTokens          bool
 	RefreshTokenValidTime time.Duration
 	AuthTokenValidTime    time.Duration
+	AuthTokenName         string
+	RefreshTokenName      string
+	CSRFTokenName         string
 	Debug                 bool
 	IsDevEnv              bool
 }
 
-const defaultRefreshTokenValidTime = 72 * time.Hour
-const defaultAuthTokenValidTime = 15 * time.Minute
+const (
+	defaultRefreshTokenValidTime  = 72 * time.Hour
+	defaultAuthTokenValidTime     = 15 * time.Minute
+	defaultBearerAuthTokenName    = "X-Auth-Token"
+	defaultBearerRefreshTokenName = "X-Refresh-Token"
+	defaultCSRFTokenName          = "X-CSRF-Token"
+	defaultCookieAuthTokenName    = "AuthToken"
+	defaultCookieRefreshTokenName = "RefreshToken"
+)
 
 // ClaimsType : holds the claims encoded in the jwt
 type ClaimsType struct {
@@ -78,12 +88,6 @@ func defaultUnauthorizedHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// this is a general json struct for when bearer tokens are used
-type bearerTokensStruct struct {
-	AuthToken    string `json:"Auth_Token"`
-	RefreshToken string `json:"Refresh_Token"`
-}
-
 // New constructs a new Auth instance with supplied options.
 func New(auth *Auth, o Options) error {
 	// check if durations have been provided for auth and refresh token exp
@@ -93,6 +97,28 @@ func New(auth *Auth, o Options) error {
 	}
 	if o.AuthTokenValidTime <= 0 {
 		o.AuthTokenValidTime = defaultAuthTokenValidTime
+	}
+
+	if o.BearerTokens {
+		if o.AuthTokenName == "" {
+			o.AuthTokenName = defaultBearerAuthTokenName
+		}
+
+		if o.RefreshTokenName == "" {
+			o.RefreshTokenName = defaultBearerRefreshTokenName
+		}
+	} else {
+		if o.AuthTokenName == "" {
+			o.AuthTokenName = defaultCookieAuthTokenName
+		}
+
+		if o.RefreshTokenName == "" {
+			o.RefreshTokenName = defaultCookieRefreshTokenName
+		}
+	}
+
+	if o.CSRFTokenName == "" {
+		o.CSRFTokenName = defaultCSRFTokenName
 	}
 
 	// create the sign and verify keys
@@ -359,11 +385,11 @@ func (a *Auth) NullifyTokens(w http.ResponseWriter, r *http.Request) error {
 
 	if a.options.BearerTokens {
 		// tokens are not in cookies
-		setHeader(w, "Auth_Token", "")
-		setHeader(w, "Refresh_Token", "")
+		setHeader(w, a.options.AuthTokenName, "")
+		setHeader(w, a.options.RefreshTokenName, "")
 	} else {
 		authCookie := http.Cookie{
-			Name:     "AuthToken",
+			Name:     a.options.AuthTokenName,
 			Value:    "",
 			Expires:  time.Now().Add(-1000 * time.Hour),
 			HttpOnly: true,
@@ -373,7 +399,7 @@ func (a *Auth) NullifyTokens(w http.ResponseWriter, r *http.Request) error {
 		http.SetCookie(w, &authCookie)
 
 		refreshCookie := http.Cookie{
-			Name:     "RefreshToken",
+			Name:     a.options.RefreshTokenName,
 			Value:    "",
 			Expires:  time.Now().Add(-1000 * time.Hour),
 			HttpOnly: true,
@@ -386,7 +412,7 @@ func (a *Auth) NullifyTokens(w http.ResponseWriter, r *http.Request) error {
 	refreshTokenClaims := c.RefreshToken.Token.Claims.(*ClaimsType)
 	a.revokeRefreshToken(refreshTokenClaims.StandardClaims.Id)
 
-	setHeader(w, "X-CSRF-Token", "")
+	setHeader(w, a.options.CSRFTokenName, "")
 	setHeader(w, "Auth-Expiry", strconv.FormatInt(time.Now().Add(-1000*time.Hour).Unix(), 10))
 	setHeader(w, "Refresh-Expiry", strconv.FormatInt(time.Now().Add(-1000*time.Hour).Unix(), 10))
 
