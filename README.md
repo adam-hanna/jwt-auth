@@ -100,14 +100,14 @@ This longer-lived token will be used to update the auth tokens. These tokens hav
 These refresh tokens contain an id which can be revoked by an authorized client.
 
 ### 3. CSRF Secret String
-A CSRF secret string will be provided to each client and will be identical the CSRF secret in the auth and refresh tokens and will change each time an auth token is refreshed. These secrets will live in an "X-CSRF-Token" response header. These secrets will be sent along with the auth and refresh tokens on each api request. 
+A CSRF secret string will be provided to each client and will be identical the CSRF secret in the auth and refresh tokens and will change each time an auth token is refreshed. These secrets will live in an "X-CSRF-Token" response header, by default, but the header key can be set as an option. These secrets will be sent along with the auth and refresh tokens on each api request. 
 
-When request are made to protected endpoint, this CSRF secret needs to be sent to the server either as a hidden form value with a name of "X-CSRF-Token", in the request header with the key of "X-CSRF-Token", or in the "Authorization" request header with a value of "Basic " + token. This secret will be checked against the secret provided in the auth token in order to prevent CSRF attacks. It will be refreshed each time the auth token is refreshed from the refresh token.
+When request are made to protected endpoint, this CSRF secret needs to be sent to the server either as a hidden form value with a name of "X-CSRF-Token", in the request header with the key of "X-CSRF-Token", or in the "Authorization" request header with a value of "Bearer " + token. This secret will be checked against the secret provided in the auth token in order to prevent CSRF attacks. It will be refreshed each time the auth token is refreshed from the refresh token.
 
 ## Cookies or Bearer Tokens?
 This API is setup to either use cookies (default) or bearer tokens. To use bearer tokens, set the BearerTokens option equal to true in the config settings.
 
-When using bearer tokens, you'll need to include the auth and refresh jwt's (along with your csrf secret) in each request. You can either include them as a form value or as data in the body of the request if Content-Type is application/json. The keys should be "Auth_Token" and "Refresh_Token", respectively. See the bearerTokens example for sample code of both.
+When using bearer tokens, you'll need to include the auth and refresh jwt's (along with your csrf secret) in each request. Include them in the request headers. The keys can be defined in the auth options, but default to "X-Auth-Token" and "X-Refresh-Token", respectively. See the bearerTokens example for sample code of both.
 
 Ideally, if using bearer tokens, they should be stored in a location that cannot be accessed with javascript. You want to be able to separate your csrf secret from your jwt's. If using web, I suggest using cookies. If using mobile, store these in a secure manner!
 
@@ -128,9 +128,12 @@ type Options struct {
   PublicKeyLocation     string // only for RSA and ECDSA signing methods
   HMACKey               []byte // only for HMAC-SHA signing method
   VerifyOnlyServer      bool // false = server can verify and issue tokens (default); true = server can only verify tokens
-  BearerTokens          bool // false = server uses cookies to transport jwts (default); true = server uses bearer tokens
+  BearerTokens          bool // false = server uses cookies to transport jwts (default); true = server uses request headers
   RefreshTokenValidTime time.Duration
   AuthTokenValidTime    time.Duration
+	AuthTokenName         string // defaults to "AuthToken" for cookies and "X-Auth-Token" for bearer tokens
+	RefreshTokenName      string // defaults to "RefreshToken" for cookies and "X-Refresh-Token" for bearer tokens
+	CSRFTokenName         string // defaults to "X-CSRF-Token"
   Debug                 bool // true = more logs are shown
   IsDevEnv              bool // true = in development mode; this sets http cookies (if used) to insecure; false = production mode; this sets http cookies (if used) to secure
 }

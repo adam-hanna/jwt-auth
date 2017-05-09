@@ -144,7 +144,6 @@ var myUnauthorizedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http
 })
 
 var restrictedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	csrfSecret := w.Header().Get("X-CSRF-Token")
 	claims, err := restrictedRoute.GrabTokenClaims(r)
 	log.Println(claims)
 
@@ -153,7 +152,7 @@ var restrictedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	templates.RenderTemplate(w, "restricted", &templates.RestrictedPage{csrfSecret, claims.CustomClaims["Role"].(string)})
+	templates.RenderTemplate(w, "restricted", &templates.RestrictedPage{claims.Csrf, claims.CustomClaims["Role"].(string)})
 })
 
 var issueClaimsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

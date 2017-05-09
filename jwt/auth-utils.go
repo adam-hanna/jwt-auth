@@ -15,10 +15,10 @@ func (a *Auth) extractTokenStringsFromReq(r *http.Request) (string, string, *jwt
 	if a.options.BearerTokens {
 		// tokens are not in cookies
 		// Note: we don't check for errors here, because we will check if the token is valid, later
-		return r.Header.Get("X-Auth-Token"), r.Header.Get("X-Refresh-Token"), nil
+		return r.Header.Get(a.options.AuthTokenName), r.Header.Get(a.options.RefreshTokenName), nil
 	}
 
-	AuthCookie, authErr := r.Cookie("AuthToken")
+	AuthCookie, authErr := r.Cookie(a.options.AuthTokenName)
 	if authErr == http.ErrNoCookie {
 		a.myLog("Unauthorized attempt! No auth cookie")
 		return "", "", newJwtError(errors.New("No auth cookie"), 401)
@@ -27,7 +27,7 @@ func (a *Auth) extractTokenStringsFromReq(r *http.Request) (string, string, *jwt
 		return "", "", newJwtError(errors.New("Internal Server Error"), 500)
 	}
 
-	RefreshCookie, refreshErr := r.Cookie("RefreshToken")
+	RefreshCookie, refreshErr := r.Cookie(a.options.RefreshTokenName)
 	if refreshErr == http.ErrNoCookie {
 		a.myLog("Unauthorized attempt! No refresh cookie")
 		return "", "", newJwtError(errors.New("No refresh cookie"), 401)
@@ -39,20 +39,20 @@ func (a *Auth) extractTokenStringsFromReq(r *http.Request) (string, string, *jwt
 	return AuthCookie.Value, RefreshCookie.Value, nil
 }
 
-func extractCsrfStringFromReq(r *http.Request) (string, *jwtError) {
-	csrfString := r.FormValue("X-CSRF-Token")
+func (a *Auth) extractCsrfStringFromReq(r *http.Request) (string, *jwtError) {
+	csrfString := r.FormValue(a.options.CSRFTokenName)
 
 	if csrfString != "" {
 		return csrfString, nil
 	}
 
-	csrfString = r.Header.Get("X-CSRF-Token")
+	csrfString = r.Header.Get(a.options.CSRFTokenName)
 	if csrfString != "" {
 		return csrfString, nil
 	}
 
 	auth := r.Header.Get("Authorization")
-	csrfString = strings.Replace(auth, "Basic", "", 1)
+	csrfString = strings.Replace(auth, "Bearer", "", 1)
 	csrfString = strings.Replace(csrfString, " ", "", -1)
 	if csrfString == "" {
 		return csrfString, newJwtError(errors.New("No CSRF string"), 401)
@@ -73,13 +73,13 @@ func (a *Auth) setCredentialsOnResponseWriter(w http.ResponseWriter, c *credenti
 
 	if a.options.BearerTokens {
 		// tokens are not in cookies
-		setHeader(w, "X-Auth-Token", authTokenString)
-		setHeader(w, "X-Refresh-Token", refreshTokenString)
+		setHeader(w, a.options.AuthTokenName, authTokenString)
+		setHeader(w, a.options.RefreshTokenName, refreshTokenString)
 	} else {
 		// tokens are in cookies
 		// note: don't use an "Expires" in auth cookies bc browsers won't send expired cookies?
 		authCookie := http.Cookie{
-			Name:  "AuthToken",
+			Name:  a.options.AuthTokenName,
 			Value: authTokenString,
 			// Expires:  time.Now().Add(a.options.AuthTokenValidTime),
 			HttpOnly: true,
@@ -88,7 +88,7 @@ func (a *Auth) setCredentialsOnResponseWriter(w http.ResponseWriter, c *credenti
 		http.SetCookie(w, &authCookie)
 
 		refreshCookie := http.Cookie{
-			Name:     "RefreshToken",
+			Name:     a.options.RefreshTokenName,
 			Value:    refreshTokenString,
 			Expires:  time.Now().Add(a.options.RefreshTokenValidTime),
 			HttpOnly: true,
@@ -108,7 +108,7 @@ func (a *Auth) setCredentialsOnResponseWriter(w http.ResponseWriter, c *credenti
 		return newJwtError(errors.New("Cannot read token claims"), 500)
 	}
 
-	w.Header().Set("X-CSRF-Token", c.CsrfString)
+	w.Header().Set(a.options.CSRFTokenName, c.CsrfString)
 	// note @adam-hanna: this may not be correct when using a sep auth server?
 	//    							 bc it checks the request?
 	w.Header().Set("Auth-Expiry", strconv.FormatInt(authTokenClaims.StandardClaims.ExpiresAt, 10))
@@ -123,7 +123,7 @@ func (a *Auth) buildCredentialsFromRequest(r *http.Request, c *credentials) *jwt
 		return newJwtError(err, 500)
 	}
 
-	csrfString, err := extractCsrfStringFromReq(r)
+	csrfString, err := a.extractCsrfStringFromReq(r)
 	if err != nil {
 		return newJwtError(err, 500)
 	}

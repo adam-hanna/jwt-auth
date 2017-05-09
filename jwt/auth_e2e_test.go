@@ -127,10 +127,10 @@ func TestWithValidAuthToken(t *testing.T) {
 	var refreshCookieIndex int
 
 	for i, cookie := range rc {
-		if cookie.Name == "AuthToken" {
+		if cookie.Name == a.options.AuthTokenName {
 			authCookieIndex = i
 		}
-		if cookie.Name == "RefreshToken" {
+		if cookie.Name == a.options.RefreshTokenName {
 			refreshCookieIndex = i
 		}
 	}
@@ -142,7 +142,7 @@ func TestWithValidAuthToken(t *testing.T) {
 
 	req.AddCookie(rc[authCookieIndex])
 	req.AddCookie(rc[refreshCookieIndex])
-	req.Header.Add("X-CSRF-Token", res.Header.Get("X-CSRF-Token"))
+	req.Header.Add(a.options.CSRFTokenName, res.Header.Get(a.options.CSRFTokenName))
 
 	// send the request
 	client := &http.Client{}
@@ -194,10 +194,10 @@ func TestWithExpiredAuthToken(t *testing.T) {
 	var refreshCookieIndex int
 
 	for i, cookie := range rc {
-		if cookie.Name == "AuthToken" {
+		if cookie.Name == a.options.AuthTokenName {
 			authCookieIndex = i
 		}
-		if cookie.Name == "RefreshToken" {
+		if cookie.Name == a.options.RefreshTokenName {
 			refreshCookieIndex = i
 		}
 	}
@@ -209,7 +209,80 @@ func TestWithExpiredAuthToken(t *testing.T) {
 
 	req.AddCookie(rc[authCookieIndex])
 	req.AddCookie(rc[refreshCookieIndex])
-	req.Header.Add("X-CSRF-Token", res.Header.Get("X-CSRF-Token"))
+	req.Header.Add(a.options.CSRFTokenName, res.Header.Get(a.options.CSRFTokenName))
+
+	// send the request
+	// need to sleep to check expiry time differences
+	duration := time.Duration(1100) * time.Millisecond // Pause
+	time.Sleep(duration)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Errorf("Couldn't send request to test server; Err: %v", err)
+	}
+
+	if resp.StatusCode != 200 {
+		t.Errorf("Expected status code 200, received: %d", resp.StatusCode)
+	}
+}
+
+func TestWithExpiredAuthTokenAndCustomName(t *testing.T) {
+	var a Auth
+	authErr := New(&a, Options{
+		SigningMethodString: "HS256",
+		HMACKey: []byte(`#5K+¥¼ƒ~ew{¦Z³(æðTÉ(©„²ÒP.¿ÓûZ’ÒGï–Š´Ãwb="=.!r.OÀÍšõgÐ€£`),
+		RefreshTokenValidTime: 72 * time.Hour,
+		AuthTokenValidTime:    1 * time.Second,
+		AuthTokenName:         "myauthtoken",
+		RefreshTokenName:      "myrefreshtoken",
+		CSRFTokenName:         "mycsrftoken",
+		Debug:                 false,
+		IsDevEnv:              true,
+	})
+	if authErr != nil {
+		t.Errorf("Failed to build jwt server; Err: %v", authErr)
+	}
+
+	ts := httptest.NewServer(recoverHandler(a.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Hello, client")
+	}))))
+	defer ts.Close()
+
+	as := httptest.NewServer(recoverHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims := ClaimsType{}
+		claims.CustomClaims = make(map[string]interface{})
+		claims.CustomClaims["Role"] = "user"
+
+		a.IssueNewTokens(w, &claims)
+		fmt.Fprintln(w, "Hello, client")
+	})))
+	defer as.Close()
+
+	res, err := http.Get(as.URL)
+	if err != nil {
+		t.Errorf("Couldn't send request to test server; Err: %v", err)
+	}
+	rc := res.Cookies()
+	var authCookieIndex int
+	var refreshCookieIndex int
+
+	for i, cookie := range rc {
+		if cookie.Name == a.options.AuthTokenName {
+			authCookieIndex = i
+		}
+		if cookie.Name == a.options.RefreshTokenName {
+			refreshCookieIndex = i
+		}
+	}
+
+	req, err := http.NewRequest("GET", ts.URL, nil)
+	if err != nil {
+		t.Errorf("Couldn't build request; Err: %v", err)
+	}
+
+	req.AddCookie(rc[authCookieIndex])
+	req.AddCookie(rc[refreshCookieIndex])
+	req.Header.Add(a.options.CSRFTokenName, res.Header.Get(a.options.CSRFTokenName))
 
 	// send the request
 	// need to sleep to check expiry time differences
@@ -264,10 +337,10 @@ func TestWithExpiredTokens(t *testing.T) {
 	var refreshCookieIndex int
 
 	for i, cookie := range rc {
-		if cookie.Name == "AuthToken" {
+		if cookie.Name == a.options.AuthTokenName {
 			authCookieIndex = i
 		}
-		if cookie.Name == "RefreshToken" {
+		if cookie.Name == a.options.RefreshTokenName {
 			refreshCookieIndex = i
 		}
 	}
@@ -279,7 +352,7 @@ func TestWithExpiredTokens(t *testing.T) {
 
 	req.AddCookie(rc[authCookieIndex])
 	req.AddCookie(rc[refreshCookieIndex])
-	req.Header.Add("X-CSRF-Token", res.Header.Get("X-CSRF-Token"))
+	req.Header.Add(a.options.CSRFTokenName, res.Header.Get(a.options.CSRFTokenName))
 
 	// send the request
 	// need to sleep to check expiry time differences
@@ -337,10 +410,10 @@ func TestWithRevokedRefreshToken(t *testing.T) {
 	var refreshCookieIndex int
 
 	for i, cookie := range rc {
-		if cookie.Name == "AuthToken" {
+		if cookie.Name == a.options.AuthTokenName {
 			authCookieIndex = i
 		}
-		if cookie.Name == "RefreshToken" {
+		if cookie.Name == a.options.RefreshTokenName {
 			refreshCookieIndex = i
 		}
 	}
@@ -352,7 +425,7 @@ func TestWithRevokedRefreshToken(t *testing.T) {
 
 	req.AddCookie(rc[authCookieIndex])
 	req.AddCookie(rc[refreshCookieIndex])
-	req.Header.Add("X-CSRF-Token", res.Header.Get("X-CSRF-Token"))
+	req.Header.Add(a.options.CSRFTokenName, res.Header.Get(a.options.CSRFTokenName))
 	w := httptest.NewRecorder()
 	a.NullifyTokens(w, req) // req has the cookies
 
@@ -407,10 +480,10 @@ func TestWithInvalidCSRFString(t *testing.T) {
 	var refreshCookieIndex int
 
 	for i, cookie := range rc {
-		if cookie.Name == "AuthToken" {
+		if cookie.Name == a.options.AuthTokenName {
 			authCookieIndex = i
 		}
-		if cookie.Name == "RefreshToken" {
+		if cookie.Name == a.options.RefreshTokenName {
 			refreshCookieIndex = i
 		}
 	}
@@ -422,7 +495,7 @@ func TestWithInvalidCSRFString(t *testing.T) {
 
 	req.AddCookie(rc[authCookieIndex])
 	req.AddCookie(rc[refreshCookieIndex])
-	req.Header.Add("X-CSRF-Token", "wrongString")
+	req.Header.Add(a.options.CSRFTokenName, "wrongString")
 
 	// send the request
 	client := &http.Client{}
@@ -486,10 +559,10 @@ func TestWithInvalidSigningMethod(t *testing.T) {
 	var refreshCookieIndex int
 
 	for i, cookie := range rc {
-		if cookie.Name == "AuthToken" {
+		if cookie.Name == a.options.AuthTokenName {
 			authCookieIndex = i
 		}
-		if cookie.Name == "RefreshToken" {
+		if cookie.Name == a.options.RefreshTokenName {
 			refreshCookieIndex = i
 		}
 	}
@@ -501,7 +574,7 @@ func TestWithInvalidSigningMethod(t *testing.T) {
 
 	req.AddCookie(rc[authCookieIndex])
 	req.AddCookie(rc[refreshCookieIndex])
-	req.Header.Add("X-CSRF-Token", res.Header.Get("X-CSRF-Token"))
+	req.Header.Add(a.options.CSRFTokenName, res.Header.Get(a.options.CSRFTokenName))
 
 	// send the request
 	client := &http.Client{}
