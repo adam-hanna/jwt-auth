@@ -122,11 +122,9 @@ func (o *Options) buildSignAndVerifyKeys() (signKey interface{}, verifyKey inter
 	} else if o.SigningMethodString == "ES256" || o.SigningMethodString == "ES384" || o.SigningMethodString == "ES512" {
 		return o.buildESKeys()
 
-	} else {
-		err = errors.New("Signing method string not recognized!")
-		return
 	}
 
+	err = errors.New("Signing method string not recognized!")
 	return
 }
 
@@ -268,6 +266,14 @@ func (a *Auth) Handler(h http.Handler) http.Handler {
 	})
 }
 
+// HandlerFunc works identically to Handler, but takes a HandlerFunc instead of a Handler.
+func (a *Auth) HandlerFunc(fn http.HandlerFunc) http.Handler {
+	if fn == nil {
+		return a.Handler(nil)
+	}
+	return a.Handler(fn)
+}
+
 // HandlerFuncWithNext is a special implementation for Negroni, but could be used elsewhere.
 func (a *Auth) HandlerFuncWithNext(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	jwtErr := a.Process(w, r)
@@ -297,14 +303,12 @@ func (a *Auth) Process(w http.ResponseWriter, r *http.Request) *jwtError {
 
 	// grab the credentials from the request
 	var c credentials
-	err := a.buildCredentialsFromRequest(r, &c)
-	if err != nil {
+	if err := a.buildCredentialsFromRequest(r, &c); err != nil {
 		return newJwtError(err, 500)
 	}
 
 	// check the credential's validity; updating expiry's if necessary and/or allowed
-	err = c.validateAndUpdateCredentials()
-	if err != nil {
+	if err := c.validateAndUpdateCredentials(); err != nil {
 		return newJwtError(err, 500)
 	}
 
@@ -313,8 +317,7 @@ func (a *Auth) Process(w http.ResponseWriter, r *http.Request) *jwtError {
 	// if we've made it this far, everything is valid!
 	// And tokens have been refreshed if need-be
 	if !a.options.VerifyOnlyServer {
-		err = a.setCredentialsOnResponseWriter(w, &c)
-		if err != nil {
+		if err := a.setCredentialsOnResponseWriter(w, &c); err != nil {
 			return newJwtError(err, 500)
 		}
 	}

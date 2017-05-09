@@ -457,3 +457,26 @@ func TestGrabTokenClaims(t *testing.T) {
 		t.Errorf("Claims do not match expectations; Expected: bar; Received: %s", myNewClaims.CustomClaims["foo"].(string))
 	}
 }
+
+var myHandlerFunc = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("In Handler Func"))
+})
+
+func TestHandlerFunc(t *testing.T) {
+	var a Auth
+	handler := a.HandlerFunc(myHandlerFunc)
+
+	req, err := http.NewRequest("OPTIONS", "/test", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	body := rr.Body.String()
+	if body != "In Handler Func" {
+		t.Errorf("expected: In Handler Func; received: %s", body)
+	}
+}
