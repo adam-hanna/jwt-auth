@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/adam-hanna/jwt-auth.svg?branch=master)](https://travis-ci.org/adam-hanna/jwt-auth) [![Coverage Status](https://coveralls.io/repos/github/adam-hanna/jwt-auth/badge.svg?branch=feature%2Ftravis_ci)](https://coveralls.io/github/adam-hanna/jwt-auth?branch=feature%2Ftravis_ci) [![Go Report Card](https://goreportcard.com/badge/github.com/adam-hanna/jwt-auth)](https://goreportcard.com/report/github.com/adam-hanna/jwt-auth) [![GoDoc](https://godoc.org/github.com/adam-hanna/jwt-auth/jwt?status.svg)](https://godoc.org/github.com/adam-hanna/jwt-auth/jwt)
+[![Build Status](https://travis-ci.org/adam-hanna/jwt-auth.svg?branch=master)](https://travis-ci.org/adam-hanna/jwt-auth) [![Coverage Status](https://coveralls.io/repos/github/adam-hanna/jwt-auth/badge.svg?branch=master)](https://coveralls.io/github/adam-hanna/jwt-auth?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/adam-hanna/jwt-auth)](https://goreportcard.com/report/github.com/adam-hanna/jwt-auth) [![GoDoc](https://godoc.org/github.com/adam-hanna/jwt-auth/jwt?status.svg)](https://godoc.org/github.com/adam-hanna/jwt-auth/jwt)
 
 # jwt-auth
 jwt auth middleware in goLang
@@ -131,9 +131,9 @@ type Options struct {
   BearerTokens          bool // false = server uses cookies to transport jwts (default); true = server uses request headers
   RefreshTokenValidTime time.Duration
   AuthTokenValidTime    time.Duration
-	AuthTokenName         string // defaults to "AuthToken" for cookies and "X-Auth-Token" for bearer tokens
-	RefreshTokenName      string // defaults to "RefreshToken" for cookies and "X-Refresh-Token" for bearer tokens
-	CSRFTokenName         string // defaults to "X-CSRF-Token"
+  AuthTokenName         string // defaults to "AuthToken" for cookies and "X-Auth-Token" for bearer tokens
+  RefreshTokenName      string // defaults to "RefreshToken" for cookies and "X-Refresh-Token" for bearer tokens
+  CSRFTokenName         string // defaults to "X-CSRF-Token"
   Debug                 bool // true = more logs are shown
   IsDevEnv              bool // true = in development mode; this sets http cookies (if used) to insecure; false = production mode; this sets http cookies (if used) to secure
 }
