@@ -323,43 +323,47 @@ The architecture of this package was inspired by [Secure](https://github.com/unr
 
 ### [Echo](https://github.com/labstack/echo)
 ~~~ go
-// main.go
 package main
 
 import (
-  "net/http"
-  "log"
+	"log"
+	"net/http"
+	"time"
 
-  "github.com/labstack/echo"
-  "github.com/adam-hanna/jwt-auth/jwt"
+	"github.com/adam-hanna/jwt-auth/jwt"
+	"github.com/labstack/echo"
 )
 
 var restrictedRoute jwt.Auth
 
 func main() {
-  authErr := jwt.New(&restrictedRoute, jwt.Options{
-    SigningMethodString:   "RS256",
-    PrivateKeyLocation:    "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
-    PublicKeyLocation:     "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
-    RefreshTokenValidTime: 72 * time.Hour,
-    AuthTokenValidTime:    15 * time.Minute,
-    Debug:                 false,
-    IsDevEnv:              true,
-  })
-  if authErr != nil {
-    log.Println("Error initializing the JWT's!")
-    log.Fatal(authErr)
-  }
+	authErr := jwt.New(&restrictedRoute, jwt.Options{
+		SigningMethodString:   "RS256",
+		PrivateKeyLocation:    "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
+		PublicKeyLocation:     "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
+		RefreshTokenValidTime: 72 * time.Hour,
+		AuthTokenValidTime:    15 * time.Minute,
+		Debug:                 false,
+		IsDevEnv:              true,
+	})
+	if authErr != nil {
+		log.Println("Error initializing the JWT's!")
+		log.Fatal(authErr)
+	}
 
-  e := echo.New()
+	e := echo.New()
 
-  e.Get("/", func(c *echo.Context) error {
-    c.String(http.StatusOK, "Restricted")
-    return nil
-  })
-  e.Use(restrictedRoute.Handler)
+	e.GET("/public", func(c echo.Context) error {
+		c.String(http.StatusOK, "Hello, world!")
+		return nil
+	})
 
-  e.Run("127.0.0.1:3000")
+	e.GET("/restricted", func(c echo.Context) error {
+		c.String(http.StatusOK, "Restricted")
+		return nil
+	}, echo.WrapMiddleware(restrictedRoute.Handler))
+
+	e.Logger.Fatal(e.Start(":1323"))
 }
 ~~~
 
