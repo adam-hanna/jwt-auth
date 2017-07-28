@@ -81,6 +81,7 @@ func (a *Auth) setCredentialsOnResponseWriter(w http.ResponseWriter, c *credenti
 		authCookie := http.Cookie{
 			Name:  a.options.AuthTokenName,
 			Value: authTokenString,
+			Path:  "/",
 			// Expires:  time.Now().Add(a.options.AuthTokenValidTime),
 			HttpOnly: true,
 			Secure:   !a.options.IsDevEnv,
@@ -91,6 +92,7 @@ func (a *Auth) setCredentialsOnResponseWriter(w http.ResponseWriter, c *credenti
 			Name:     a.options.RefreshTokenName,
 			Value:    refreshTokenString,
 			Expires:  time.Now().Add(a.options.RefreshTokenValidTime),
+			Path:     "/",
 			HttpOnly: true,
 			Secure:   !a.options.IsDevEnv,
 		}
