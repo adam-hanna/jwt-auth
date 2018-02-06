@@ -39,6 +39,12 @@ func (c *credentials) buildTokenWithClaimsFromString(tokenString string, verifyK
 		return verifyKey, nil
 	})
 
+	if token == nil {
+		token = new(jwtGo.Token)
+		token.Claims = new(ClaimsType)
+		c.myLog("token is nil, set empty token (parse error=" + err.Error() + ")")
+	}
+
 	newToken.Token = token
 	newToken.ParseErr = err
 
