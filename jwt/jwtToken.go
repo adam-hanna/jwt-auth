@@ -28,7 +28,6 @@ func (t *jwtToken) myLog(stoofs interface{}) {
 
 func (c *credentials) buildTokenWithClaimsFromString(tokenString string, verifyKey interface{}, validTime time.Duration) *jwtToken {
 	// note @adam-hanna: should we be checking inputs? Especially the token string?
-
 	var newToken jwtToken
 
 	token, err := jwtGo.ParseWithClaims(tokenString, &ClaimsType{}, func(token *jwtGo.Token) (interface{}, error) {
@@ -38,6 +37,12 @@ func (c *credentials) buildTokenWithClaimsFromString(tokenString string, verifyK
 		}
 		return verifyKey, nil
 	})
+
+	if token == nil {
+		token = new(jwtGo.Token)
+		token.Claims = new(ClaimsType)
+		c.myLog("token is nil, set empty token (parse error=" + err.Error() + ")")
+	}
 
 	newToken.Token = token
 	newToken.ParseErr = err
