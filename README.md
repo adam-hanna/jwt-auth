@@ -107,7 +107,7 @@ When request are made to protected endpoint, this CSRF secret needs to be sent t
 ## Cookies or Bearer Tokens?
 This API is setup to either use cookies (default) or bearer tokens. To use bearer tokens, set the BearerTokens option equal to true in the config settings.
 
-When using bearer tokens, you'll need to include the auth and refresh jwt's (along with your csrf secret) in each request. Include them in the request headers. The keys can be defined in the auth options, but default to "X-Auth-Token" and "X-Refresh-Token", respectively. See the bearerTokens example for sample code of both.
+When using bearer tokens, you'll need to include the auth and (optionally [the]) refresh jwt's (along with your csrf secret) in each request. Include them in the request headers. The keys can be defined in the auth options, but default to "X-Auth-Token" and "X-Refresh-Token", respectively. See the bearerTokens example for sample code of both.
 
 Ideally, if using bearer tokens, they should be stored in a location that cannot be accessed with javascript. You want to be able to separate your csrf secret from your jwt's. If using web, I suggest using cookies. If using mobile, store these in a secure manner!
 
@@ -559,7 +559,7 @@ func main() {
 ~~~ bash
 $ cd jwt && go test -coverprofile=test/coverage.out
 
-coverage: 83.4% of statements
+coverage: 84.7% of statements
 
 $ go tool cover -html=test/coverage.out
 ~~~

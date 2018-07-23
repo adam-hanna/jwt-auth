@@ -106,8 +106,8 @@ func main() {
 		SigningMethodString:   "RS256",
 		PrivateKeyLocation:    "keys/app.rsa",     // `$ openssl genrsa -out app.rsa 2048`
 		PublicKeyLocation:     "keys/app.rsa.pub", // `$ openssl rsa -in app.rsa -pubout > app.rsa.pub`
-		RefreshTokenValidTime: 10 * time.Second,
-		AuthTokenValidTime:    5 * time.Second,
+		RefreshTokenValidTime: 10 * time.Minute,
+		AuthTokenValidTime:    5 * time.Minute,
 		Debug:                 true,
 		BearerTokens:          true,
 	})

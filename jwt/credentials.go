@@ -66,9 +66,9 @@ func (a *Auth) buildCredentialsFromClaims(c *credentials, claims *ClaimsType) *j
 
 func (a *Auth) buildCredentialsFromStrings(csrfString string, authTokenString string, refreshTokenString string, c *credentials) *jwtError {
 	// check inputs
-	if csrfString == "" || authTokenString == "" || refreshTokenString == "" {
-		return newJwtError(errors.New("Invalid inputs to build credentials. Inputs cannot be blank"), 401)
-	}
+	//if csrfString == "" || authTokenString == "" || refreshTokenString == "" {
+	//return newJwtError(errors.New("Invalid inputs to build credentials. Inputs cannot be blank"), 401)
+	//}
 
 	// inputs are good
 	c.CsrfString = csrfString
@@ -84,7 +84,9 @@ func (a *Auth) buildCredentialsFromStrings(csrfString string, authTokenString st
 	//       Also, tokens that have expired will throw err?
 	c.AuthToken = c.buildTokenWithClaimsFromString(authTokenString, a.verifyKey, a.options.AuthTokenValidTime)
 
-	c.RefreshToken = c.buildTokenWithClaimsFromString(refreshTokenString, a.verifyKey, a.options.RefreshTokenValidTime)
+	if refreshTokenString != "" {
+		c.RefreshToken = c.buildTokenWithClaimsFromString(refreshTokenString, a.verifyKey, a.options.RefreshTokenValidTime)
+	}
 
 	return nil
 }
@@ -119,6 +121,10 @@ func generateNewCsrfString() (string, *jwtError) {
 }
 
 func (c *credentials) updateAuthTokenFromRefreshToken() *jwtError {
+	if c.RefreshToken == nil || c.RefreshToken.Token == nil {
+		return newJwtError(errors.New("Refresh token is invalid. Cannot refresh auth token."), 401)
+	}
+
 	refreshTokenClaims, ok := c.RefreshToken.Token.Claims.(*ClaimsType)
 	if !ok {
 		return newJwtError(errors.New("Cannot read token claims"), 500)
