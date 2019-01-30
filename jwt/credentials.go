@@ -28,7 +28,8 @@ type credentialsOptions struct {
 
 	VerifyOnlyServer bool
 
-	Debug bool
+	Debug       bool
+	DisableCSRF bool
 }
 
 func (c *credentials) myLog(stoofs interface{}) {
@@ -50,7 +51,7 @@ func (a *Auth) buildCredentialsFromClaims(c *credentials, claims *ClaimsType) *j
 	c.options.VerifyOnlyServer = a.options.VerifyOnlyServer
 	c.options.SigningMethodString = a.options.SigningMethodString
 	c.options.Debug = a.options.Debug
-
+	c.options.DisableCSRF = a.options.DisableCSRF
 	authClaims := *claims
 	authClaims.Csrf = newCsrfString
 	authClaims.StandardClaims.ExpiresAt = time.Now().Add(a.options.AuthTokenValidTime).Unix()
@@ -164,10 +165,13 @@ func (c *credentials) updateAuthTokenFromRefreshToken() *jwtError {
 }
 
 func (c *credentials) validateAndUpdateCredentials() *jwtError {
+	var err *jwtError
 	// first, check that the csrf token matches what's in the jwts
-	err := c.validateCsrfStringAgainstCredentials()
-	if err != nil {
-		return newJwtError(err, 500)
+	if c.options.DisableCSRF {
+		err = c.validateCsrfStringAgainstCredentials()
+		if err != nil {
+			return newJwtError(err, 500)
+		}
 	}
 
 	// next, check the auth token in a stateless manner

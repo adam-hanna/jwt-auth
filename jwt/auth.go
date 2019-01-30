@@ -42,6 +42,7 @@ type Options struct {
 	CSRFTokenName         string
 	Debug                 bool
 	IsDevEnv              bool
+	DisableCSRF           bool
 }
 
 const (

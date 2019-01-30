@@ -151,12 +151,15 @@ func (a *Auth) buildCredentialsFromRequest(r *http.Request, c *credentials) *jwt
 		return newJwtError(err, 500)
 	}
 
-	csrfString, err := a.extractCsrfStringFromReq(r)
-	if err != nil {
-		return newJwtError(err, 500)
+	if !a.options.DisableCSRF {
+		csrfString, err := a.extractCsrfStringFromReq(r)
+		if err != nil {
+			return newJwtError(err, 500)
+		}
+		err = a.buildCredentialsFromStrings(csrfString, authTokenString, refreshTokenString, c)
+	} else {
+		err = a.buildCredentialsFromStrings("", authTokenString, refreshTokenString, c)
 	}
-
-	err = a.buildCredentialsFromStrings(csrfString, authTokenString, refreshTokenString, c)
 	if err != nil {
 		return newJwtError(err, 500)
 	}
