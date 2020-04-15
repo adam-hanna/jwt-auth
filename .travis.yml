@@ -1,6 +1,6 @@
 language: go
 go:
-  - 1.7.x
+  - 1.14.x
 # branches:
 #   only:
 #     - feature/travis_ci
