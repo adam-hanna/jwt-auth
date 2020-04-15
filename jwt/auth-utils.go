@@ -81,8 +81,8 @@ func (a *Auth) setCredentialsOnResponseWriter(w http.ResponseWriter, c *credenti
 		return newJwtError(err, 500)
 	}
 	if c.RefreshToken != nil && c.RefreshToken.Token != nil {
-		log.Println(c.RefreshToken)
-		log.Println(c.RefreshToken.Token)
+		a.myLog(c.RefreshToken)
+		a.myLog(c.RefreshToken.Token)
 		refreshTokenString, err = c.RefreshToken.Token.SignedString(a.signKey)
 		if err != nil {
 			return newJwtError(err, 500)

@@ -1,3 +1,9 @@
 .DS_Store
 
 coverate.out
+
+*.swp
+
+jwt/vendor
+
+jwt/Godeps
