@@ -82,9 +82,8 @@ It is important to understand the objective of this auth architecture. It certai
 1. Protection of non-critical api's (e.g. not meant for financial, healthcare, gov't, etc. services)
 2. Stateless
 3. User sessions
-4. XSS protection
-5. CSRF protection
-6. Web and/or mobile
+4. CSRF protection
+5. Web and/or mobile
 
 ## Design
 The design of this auth system is based around the three major components, listed below.
