@@ -3,7 +3,7 @@
 # jwt-auth
 jwt auth middleware in goLang.
 
-If you're interested in using sessions, checkout my [sessions library](https://github.com/adam-hanna/sessions)!
+If you're interested in using sessions, check out my [sessions library](https://github.com/adam-hanna/sessions)!
 
 **README Contents:**
 
@@ -79,34 +79,34 @@ ok    github.com/adam-hanna/jwt-auth/jwt  15.463s
 ## Goals
 It is important to understand the objective of this auth architecture. It certainly is not an applicable design for all use cases. Please read and understand the goals, below, and make changes to your own workflow to suit your specific needs.
 
-1. Protection of non-critical api's (e.g. not meant for financial, healthcare, gov't, etc. services)
+1. Protection of non-critical API's (e.g. not meant for financial, healthcare, gov't, etc. services)
 2. Stateless
 3. User sessions
 4. CSRF protection
 5. Web and/or mobile
 
 ## Design
-The design of this auth system is based around the three major components, listed below.
+The design of this auth system is based on the three major components, listed below.
 
 1. Short-lived (minutes) JWT Auth Token
-2. Longer-lived (hours / days) JWT Refresh Token
+2. Longer-lived (hours/days) JWT Refresh Token
 3. CSRF secret string
 
 ### 1. Short-lived (minutes) JWT Auth Token
-The short-lived jwt auth token allows the user to make stateless requests to protected api endpoints. It has an expiration time of 15 minutes by default and will be refreshed by the longer-lived refresh token.
+The short-lived jwt auth token allows the user to make stateless requests to protected API endpoints. It has an expiration time of 15 minutes by default and will be refreshed by the longer-lived refresh token.
 
 ### 2. Longer-lived (hours/days) JWT Refresh Token
 This longer-lived token will be used to update the auth tokens. These tokens have a 72 hour expiration time by default which will be updated each time an auth token is refreshed.
 
-These refresh tokens contain an id which can be revoked by an authorized client.
+These refresh tokens contain an id that can be revoked by an authorized client.
 
 ### 3. CSRF Secret String
-A CSRF secret string will be provided to each client and will be identical the CSRF secret in the auth and refresh tokens and will change each time an auth token is refreshed. These secrets will live in an "X-CSRF-Token" response header, by default, but the header key can be set as an option. These secrets will be sent along with the auth and refresh tokens on each api request. 
+A CSRF secret string will be provided to each client and will be identical to the CSRF secret in the auth and refresh tokens and will change each time an auth token is refreshed. These secrets will live in an "X-CSRF-Token" response header, by default, but the header key can be set as an option. These secrets will be sent along with the auth and refresh tokens on each API request. 
 
-When request are made to protected endpoint, this CSRF secret needs to be sent to the server either as a hidden form value with a name of "X-CSRF-Token", in the request header with the key of "X-CSRF-Token", or in the "Authorization" request header with a value of "Bearer " + token. This secret will be checked against the secret provided in the auth token in order to prevent CSRF attacks. It will be refreshed each time the auth token is refreshed from the refresh token.
+When requests are made to a protected endpoint, this CSRF secret needs to be sent to the server either as a hidden form value with a name of "X-CSRF-Token", in the request header with the key of "X-CSRF-Token", or in the "Authorization" request header with a value of "Bearer " + token. This secret will be checked against the secret provided in the auth token in order to prevent CSRF attacks. It will be refreshed each time the auth token is refreshed from the refresh token.
 
 ## Cookies or Bearer Tokens?
-This API is setup to either use cookies (default) or bearer tokens. To use bearer tokens, set the BearerTokens option equal to true in the config settings.
+This API is set up to either use cookies (default) or bearer tokens. To use bearer tokens, set the BearerTokens option equal to true in the config settings.
 
 When using bearer tokens, you'll need to include the auth and (optionally [the]) refresh jwt's (along with your csrf secret) in each request. Include them in the request headers. The keys can be defined in the auth options, but default to "X-Auth-Token" and "X-Refresh-Token", respectively. See the bearerTokens example for sample code of both.
 
@@ -223,7 +223,7 @@ csrfSecret := w.Header().Get("X-CSRF-Token")
 ~~~ go
 // in a handler func
 // note: this works because if the middleware has made it this far, the JWT middleware has written this to the response writer (w)
-// note: also, this won't be exact and may be a few milliseconds off from the token's actual expiry
+// note: also, this won't be exact and might be a few milliseconds off from the token's actual expiry
 refreshExpirationTime := w.Header().Get("Refresh-Expiry")
 ~~~
 
@@ -231,7 +231,7 @@ refreshExpirationTime := w.Header().Get("Refresh-Expiry")
 ~~~ go
 // in a handler func
 // note: this works because if the middleware has made it this far, the JWT middleware has written this to the response writer (w)
-// note: also, this won't be exact and may be a few milliseconds off from the token's actual expiry
+// note: also, this won't be exact and might be a few milliseconds off from the token's actual expiry
 authExpirationTime := w.Header().Get("Auth-Expiry")
 ~~~
 
@@ -255,7 +255,7 @@ http.Redirect(w, r, "/login", 302)
 ~~~
 
 ### Token Id checker
-A function used to check if a refresh token id has been revoked. You can either use a blacklist of revoked tokens, or a whitelist of allowed tokens. Your call. This function simply needs to return true if the token id has not been revoked. This function is run everytime an auth token is refreshed.
+A function is used to check if a refresh token id has been revoked. You can either use a blacklist of revoked tokens, or a whitelist of allowed tokens. Your call. This function simply needs to return true if the token id has not been revoked. This function is run every time an auth token is refreshed.
 ~~~go
 var restrictedRoute jwt.Auth
 
@@ -583,8 +583,8 @@ copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
